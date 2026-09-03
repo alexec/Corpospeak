@@ -1,0 +1,42 @@
+name: CorpSpeak
+options:
+  bundleIdPrefix: com.alexcollins
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    ALWAYS_SEARCH_USER_PATHS: NO
+targets:
+  CorpSpeak:
+    type: application
+    platform: macOS
+    sources:
+      - CorpSpeak
+    info:
+      path: CorpSpeak/Info.plist
+      properties:
+        CFBundleDisplayName: CorpSpeak
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSMicrophoneUsageDescription: CorpSpeak listens continuously so it can translate what you say.
+        NSSpeechRecognitionUsageDescription: CorpSpeak transcribes your speech on-device so it can translate it.
+        NSHumanReadableCopyright: ""
+    entitlements:
+      path: CorpSpeak/CorpSpeak.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.device.audio-input: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alexcollins.CorpSpeak
+        PRODUCT_NAME: CorpSpeak
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: true
+        GENERATE_INFOPLIST_FILE: false
+        SWIFT_EMIT_LOC_STRINGS: true
+        ENABLE_PREVIEWS: true
