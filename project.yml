@@ -11,12 +11,19 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "26.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     ALWAYS_SEARCH_USER_PATHS: NO
+packages:
+  sherpa-onnx:
+    url: https://github.com/k2-fsa/sherpa-onnx
+    from: 1.13.7
 targets:
   CorpSpeak:
     type: application
     platform: macOS
     sources:
       - CorpSpeak
+    dependencies:
+      - package: sherpa-onnx
+        product: sherpa-onnx
     info:
       path: CorpSpeak/Info.plist
       properties:
@@ -30,12 +37,14 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.device.audio-input: true
+        com.apple.security.network.client: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alexcollins.CorpSpeak
         PRODUCT_NAME: CorpSpeak
         CODE_SIGN_STYLE: Automatic
-        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: 6T4RVD5724
         ENABLE_HARDENED_RUNTIME: true
         GENERATE_INFOPLIST_FILE: false
         SWIFT_EMIT_LOC_STRINGS: true

@@ -4,7 +4,9 @@ A macOS app that listens to you continuously, rewrites what you said as CorpSpea
 on-device Apple Intelligence model, and reads the result back to you.
 
 Everything runs on the Mac: dictation (Speech framework, on-device recognition), the rewrite
-(Foundation Models framework), and playback (AVSpeechSynthesizer). No network, no settings.
+(Foundation Models framework), and playback in your own cloned voice with [ZipVoice](https://github.com/k2-fsa/ZipVoice)
+via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). The only
+network use is a one-time download of the voice model.
 
 ## Requirements
 
@@ -33,17 +35,28 @@ xcodebuild -project CorpSpeak.xcodeproj -scheme CorpSpeak -configuration Debug b
 | --- | --- |
 | `CorpSpeak/Services/SpeechListener.swift` | Always-on microphone → `SFSpeechRecognizer`. Emits one utterance per pause in speech. |
 | `CorpSpeak/Services/Translator.swift` | Sends an utterance to the on-device `LanguageModelSession` and returns the rewrite. |
-| `CorpSpeak/Services/Speaker.swift` | Reads text aloud with `AVSpeechSynthesizer`. |
+| `CorpSpeak/Services/Speaker.swift` | Reads text aloud one sentence at a time and reports which sentence is playing. |
+| `CorpSpeak/Services/ZipVoiceSynthesizer.swift` | Clones the user's voice with ZipVoice through sherpa-onnx. |
+| `CorpSpeak/Services/VoiceSample.swift` | The enrollment phrase and the saved recording of the user reading it. |
+| `CorpSpeak/Services/ModelStore.swift` | Downloads and unpacks the models into Application Support on first launch. |
+| `CorpSpeak/Services/AudioPlayer.swift` | Plays the synthesized PCM audio. |
+| `CorpSpeak/Services/AppleSpeech.swift` | Apple's built-in voices, used only until the model is installed. |
 | `CorpSpeak/CorpSpeakStyle.swift` | The glossary and prompt instructions that define CorpSpeak, taken from [The Corpospeak Field Guide](https://claude.ai/code/artifact/0a819392-f474-464f-8815-0073bd7845e9). |
 | `CorpSpeak/CorpSpeakModel.swift` | Wires the three services together: listen → translate → speak → listen. |
 | `CorpSpeak/Views/ContentView.swift` | The single window. |
 
 Listening is paused while the app is speaking so it does not transcribe its own voice.
 
-## Voice quality
+## Voice
 
-The app picks the most natural English voice installed on the Mac. Out of the box that is a
-compact system voice. For a much more realistic voice, download a Premium or Enhanced one:
-System Settings → Accessibility → Read & Speak → System Voice → Manage Voices, then pick an
-English voice marked Premium (for example Ava, Zoe or Samantha). The app uses it automatically on
-next launch.
+On first launch the app asks you to read one sentence, records it through the mic, and from then
+on speaks CorpSpeak in your voice using [ZipVoice](https://github.com/k2-fsa/ZipVoice), a
+zero-shot voice cloning model, through sherpa-onnx. The recording stays on the Mac. Choose
+*Record my voice again…* from the voice button to redo it.
+
+The model and its vocoder (about 160 MB) are downloaded once from the sherpa-onnx GitHub releases
+into `~/Library/Containers/com.alexcollins.CorpSpeak/Data/Library/Application Support/CorpSpeak/`.
+Apple's built-in voice fills in until they arrive.
+
+Long replies are spoken one sentence at a time, and the window scrolls to keep the current
+sentence in view. Escape cuts a reply off; ⌘M mutes the microphone.

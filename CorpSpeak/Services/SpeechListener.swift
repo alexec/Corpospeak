@@ -15,6 +15,7 @@ final class SpeechListener {
         case idle
         case listening
         case paused
+        case muted
         case unavailable(String)
     }
 
@@ -40,7 +41,14 @@ final class SpeechListener {
     private(set) var audioLevel: Float = 0
 
     /// How long the speaker must be quiet before the utterance is treated as finished.
-    var silenceInterval: TimeInterval = 1.5
+    var silenceInterval: TimeInterval = 2.0
+
+    /// When the current utterance will be treated as finished if nothing more is heard.
+    /// Nil while nothing has been heard yet.
+    private(set) var silenceDeadline: Date?
+
+    /// True while the user has muted the microphone. Nothing is recognised until unmuted.
+    private(set) var isMuted = false
 
     private let audioEngine = AVAudioEngine()
     private let feed = AudioFeed()
@@ -112,7 +120,41 @@ final class SpeechListener {
     func resume() {
         guard wantsListening, isPaused else { return }
         isPaused = false
-        beginRecognition()
+        if isMuted {
+            status = .muted
+        } else {
+            beginRecognition()
+        }
+    }
+
+    /// Mutes or unmutes. Muting drops the current utterance; unmuting starts fresh.
+    func setMuted(_ muted: Bool) {
+        guard muted != isMuted else { return }
+        isMuted = muted
+        guard wantsListening else { return }
+        if muted {
+            endRecognition()
+            liveTranscript = ""
+            status = .muted
+        } else if !isPaused {
+            beginRecognition()
+        } else {
+            status = .paused
+        }
+    }
+
+    // MARK: Raw capture (for voice enrollment)
+
+    /// Starts keeping the raw microphone audio, in addition to feeding the recogniser.
+    func startCapture() {
+        feed.startCapture()
+    }
+
+    /// Stops keeping raw audio and returns what was captured since `startCapture`.
+    func stopCapture() -> VoiceSample? {
+        let (samples, rate) = feed.stopCapture()
+        guard !samples.isEmpty, rate > 0 else { return nil }
+        return VoiceSample(samples: samples, sampleRate: rate)
     }
 
     // MARK: Audio
@@ -149,7 +191,7 @@ final class SpeechListener {
     // MARK: Recognition
 
     private func beginRecognition() {
-        guard let recognizer, wantsListening, !isPaused else { return }
+        guard let recognizer, wantsListening, !isPaused, !isMuted else { return }
         endRecognition()
         let thisGeneration = generation
 
@@ -175,6 +217,7 @@ final class SpeechListener {
         generation += 1
         silenceTask?.cancel()
         silenceTask = nil
+        silenceDeadline = nil
         feed.request = nil
         task?.cancel()
         task = nil
@@ -186,6 +229,9 @@ final class SpeechListener {
         if let result {
             let text = result.bestTranscription.formattedString
             if text != liveTranscript {
+                if liveTranscript.isEmpty, !text.isEmpty {
+                    feed.markSpeechStart(marginSeconds: 0.7)
+                }
                 liveTranscript = text
                 restartSilenceTimer()
             }
@@ -211,6 +257,7 @@ final class SpeechListener {
         silenceTask?.cancel()
         let thisGeneration = generation
         let interval = silenceInterval
+        silenceDeadline = Date().addingTimeInterval(interval)
         silenceTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(interval))
             guard !Task.isCancelled, let self, thisGeneration == self.generation else { return }
@@ -251,6 +298,9 @@ private final class AudioFeed: @unchecked Sendable {
     private let lock = NSLock()
     private var current: SFSpeechAudioBufferRecognitionRequest?
     private var latestLevel: Float = 0
+    private var capturing = false
+    private var captured: [Float] = []
+    private var captureRate: Double = 0
 
     var request: SFSpeechAudioBufferRecognitionRequest? {
         get { lock.withLock { current } }
@@ -267,6 +317,39 @@ private final class AudioFeed: @unchecked Sendable {
         lock.withLock {
             current?.append(buffer)
             latestLevel = level
+            if capturing, let channel = buffer.floatChannelData?[0] {
+                captured.append(contentsOf: UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
+                captureRate = buffer.format.sampleRate
+            }
+        }
+    }
+
+    private var speechStart: Int?
+
+    func startCapture() {
+        lock.withLock {
+            captured.removeAll(keepingCapacity: true)
+            speechStart = nil
+            capturing = true
+        }
+    }
+
+    /// Remembers where speech began so the capture can be cut there, keeping a short margin.
+    /// Only the first call per capture counts.
+    func markSpeechStart(marginSeconds: Double) {
+        lock.withLock {
+            guard capturing, speechStart == nil else { return }
+            speechStart = max(0, captured.count - Int(marginSeconds * captureRate))
+        }
+    }
+
+    /// Returns the audio from where speech began (or the whole capture if it never did).
+    func stopCapture() -> ([Float], Double) {
+        lock.withLock {
+            capturing = false
+            defer { captured = []; speechStart = nil }
+            let start = speechStart ?? 0
+            return (Array(captured[start...]), captureRate)
         }
     }
 

@@ -2,12 +2,15 @@ import Foundation
 import Observation
 
 /// Wires the services together: listen → translate → speak → listen.
+/// On first launch, before any of that, it records the user's voice for cloning.
 @MainActor
 @Observable
 final class CorpSpeakModel {
     enum Phase: Equatable {
         case starting
+        case enrolling
         case listening
+        case muted
         case translating
         case speaking
         case error(String)
@@ -26,6 +29,8 @@ final class CorpSpeakModel {
     private(set) var heard = ""
     /// Its CorpSpeak rendering.
     private(set) var translated = ""
+    /// Shown during enrollment when a take was not usable.
+    private(set) var enrollmentHint = ""
 
     private enum Job {
         case utterance(String)
@@ -34,16 +39,28 @@ final class CorpSpeakModel {
 
     private var pending: [Job] = []
     private var isProcessing = false
+    private var isEnrolling = false
+    private static let normalSilence: TimeInterval = 2.0
+    private static let enrollmentSilence: TimeInterval = 2.5
+
+    var isMuted: Bool { listener.isMuted }
 
     func start() async {
         translator.checkAvailability()
 
+        // Fetch and load the voice models in the background; listening does not wait for them.
+        Task { await speaker.prepare() }
+
         listener.onUtterance = { [weak self] text in
-            self?.enqueue(.utterance(text))
+            self?.handleUtterance(text)
         }
         await listener.start()
 
-        refreshPhase()
+        if listener.status == .listening || listener.status == .muted, !speaker.hasOwnVoice {
+            beginEnrollment()
+        } else {
+            refreshPhase()
+        }
     }
 
     func stop() {
@@ -51,14 +68,69 @@ final class CorpSpeakModel {
         speaker.stop()
     }
 
-    /// Switches voices and reads a short line in the new voice.
-    func selectVoice(_ identifier: String) {
-        guard identifier != speaker.voiceIdentifier else { return }
-        speaker.select(voiceIdentifier: identifier)
+    /// Mutes or unmutes the microphone. Muting mid-sentence drops that sentence.
+    func toggleMute() {
+        listener.setMuted(!listener.isMuted)
+        if !isProcessing { refreshPhase() }
+    }
+
+    /// Cuts off whatever is being spoken. Listening resumes as usual.
+    func stopSpeaking() {
+        guard speaker.isSpeaking else { return }
+        speaker.stop()
+    }
+
+    // MARK: Enrollment
+
+    /// Asks the user to read the phrase and records it. Also used to re-record later.
+    func beginEnrollment() {
+        guard listener.status != .idle else { return }
+        if case .unavailable = listener.status { return }
+        listener.setMuted(false)
+        speaker.stop()
+        pending.removeAll()
+        isEnrolling = true
+        enrollmentHint = ""
+        heard = ""
+        translated = ""
+        listener.silenceInterval = Self.enrollmentSilence
+        listener.resume()
+        listener.startCapture()
+        phase = .enrolling
+    }
+
+    private func finishEnrollment(heard text: String) {
+        let sample = listener.stopCapture()?.trimmed()
+        let match = VoiceSample.match(text)
+        let duration = sample?.duration ?? 0
+        guard let sample, match >= 0.6, duration >= 3, duration <= 20 else {
+            if match < 0.6 {
+                enrollmentHint = "That didn't sound like the phrase. Once more, from the top."
+            } else if duration < 3 {
+                enrollmentHint = "That was too short. Once more, a little slower."
+            } else {
+                enrollmentHint = "That ran long. Once more, in one go."
+            }
+            listener.startCapture()
+            return
+        }
+
+        isEnrolling = false
+        listener.silenceInterval = Self.normalSilence
+        speaker.enroll(sample)
+        enrollmentHint = ""
         enqueue(.voicePreview)
     }
 
     // MARK: Pipeline
+
+    private func handleUtterance(_ text: String) {
+        if isEnrolling {
+            finishEnrollment(heard: text)
+        } else {
+            enqueue(.utterance(text))
+        }
+    }
 
     private func enqueue(_ job: Job) {
         pending.append(job)
@@ -78,7 +150,7 @@ final class CorpSpeakModel {
                 await process(text)
             case .voicePreview:
                 phase = .speaking
-                await speaker.speak("Let's circle back on that.")
+                await speaker.speak("Great news. We're ready to turn plain English into speech suitable for any of your upcoming presentations or meetings.")
             }
         }
 
@@ -110,6 +182,10 @@ final class CorpSpeakModel {
             phase = .error(why)
         } else if case .unavailable(let why) = translator.availability {
             phase = .error(why)
+        } else if isEnrolling {
+            phase = .enrolling
+        } else if listener.status == .muted {
+            phase = .muted
         } else if listener.status == .listening {
             phase = .listening
         }
