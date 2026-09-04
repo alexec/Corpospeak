@@ -40,7 +40,7 @@ xcodebuild -project CorpSpeak.xcodeproj -scheme CorpSpeak -configuration Debug b
 | `CorpSpeak/Services/VoiceSample.swift` | The enrollment phrase and the saved recording of the user reading it. |
 | `CorpSpeak/Services/ModelStore.swift` | Downloads and unpacks the models into Application Support on first launch. |
 | `CorpSpeak/Services/AudioPlayer.swift` | Plays the synthesized PCM audio. |
-| `CorpSpeak/CorpSpeakStyle.swift` | The glossary and prompt instructions that define CorpSpeak, taken from [The Corpospeak Field Guide](https://claude.ai/code/artifact/0a819392-f474-464f-8815-0073bd7845e9). |
+| `CorpSpeak/CorpSpeakStyle.swift` | The CorpSpeak glossary and prompt, taken from [The Corpospeak Field Guide](https://claude.ai/code/artifact/0a819392-f474-464f-8815-0073bd7845e9). |
 | `CorpSpeak/CorpSpeakModel.swift` | Wires the three services together: listen → translate → speak → listen. |
 | `CorpSpeak/Views/ContentView.swift` | The single window. |
 
@@ -58,4 +58,4 @@ into `~/Library/Containers/com.alexcollins.CorpSpeak/Data/Library/Application Su
 There is no other voice: the app speaks only once you have recorded yours and the model is in.
 
 Long replies are spoken one sentence at a time, and the window scrolls to keep the current
-sentence in view. Escape cuts a reply off; ⌘M mutes the microphone.
+sentence in view. Clicking the status pill (or Escape) cuts a reply off; ⌘M mutes the microphone.

@@ -20,8 +20,6 @@ final class CorpSpeakModel {
     let translator = Translator()
     let speaker = Speaker()
 
-    /// Only one direction for now. Flip this to go the other way.
-    let direction: TranslationDirection = .englishToCorpSpeak
 
     private(set) var phase: Phase = .starting
 
@@ -40,6 +38,8 @@ final class CorpSpeakModel {
     private var pending: [Job] = []
     private var isProcessing = false
     private var isEnrolling = false
+    /// Bumped by `stopSpeaking` so a translation in flight is discarded instead of spoken.
+    private var cancelGeneration = 0
     private static let normalSilence: TimeInterval = 2.0
     private static let enrollmentSilence: TimeInterval = 2.5
 
@@ -74,9 +74,17 @@ final class CorpSpeakModel {
         if !isProcessing { refreshPhase() }
     }
 
-    /// Cuts off whatever is being spoken. Listening resumes as usual.
+    /// True while there is something to stop: a translation in flight or speech playing.
+    var canStop: Bool {
+        phase == .translating || phase == .speaking
+    }
+
+    /// Cuts off whatever is being spoken or translated and drops anything queued behind it.
+    /// Listening resumes as usual.
     func stopSpeaking() {
-        guard speaker.isSpeaking else { return }
+        guard canStop else { return }
+        cancelGeneration += 1
+        pending.removeAll()
         speaker.stop()
     }
 
@@ -168,8 +176,10 @@ final class CorpSpeakModel {
         }
 
         phase = .translating
+        let generation = cancelGeneration
         do {
-            translated = try await translator.translate(text, direction: direction)
+            translated = try await translator.translate(text)
+            guard generation == cancelGeneration else { return }
             phase = .speaking
             if await !speaker.speak(translated) {
                 phase = .error(speaker.hasOwnVoice

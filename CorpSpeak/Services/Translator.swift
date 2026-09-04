@@ -2,25 +2,6 @@ import Foundation
 import FoundationModels
 import Observation
 
-enum TranslationDirection: CaseIterable {
-    case englishToCorpSpeak
-    case corpSpeakToEnglish
-
-    var instructions: String {
-        switch self {
-        case .englishToCorpSpeak: CorpSpeakStyle.englishToCorpSpeakInstructions
-        case .corpSpeakToEnglish: CorpSpeakStyle.corpSpeakToEnglishInstructions
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .englishToCorpSpeak: "English → CorpSpeak"
-        case .corpSpeakToEnglish: "CorpSpeak → English"
-        }
-    }
-}
-
 /// Rewrites text with the on-device Apple Intelligence model.
 @MainActor
 @Observable
@@ -42,9 +23,9 @@ final class Translator {
         }
     }
 
-    func translate(_ text: String, direction: TranslationDirection) async throws -> String {
+    func translate(_ text: String) async throws -> String {
         // A fresh session per utterance keeps each rewrite independent of the last.
-        let session = LanguageModelSession(instructions: direction.instructions)
+        let session = LanguageModelSession(instructions: CorpSpeakStyle.englishToCorpSpeakInstructions)
         let prompt = """
             Rewrite the text between the markers. Reply with the rewritten text only.
 
@@ -57,10 +38,19 @@ final class Translator {
                 to: prompt,
                 options: GenerationOptions(temperature: 0.3, maximumResponseTokens: 200)
             )
-            return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            return Self.clean(response.content)
         } catch LanguageModelSession.GenerationError.exceededContextWindowSize {
             throw TranslationError.tooLong
         }
+    }
+
+    /// The small model occasionally echoes the prompt's markers around its answer.
+    private static func clean(_ output: String) -> String {
+        output
+            .components(separatedBy: .newlines)
+            .filter { !["<<<", ">>>"].contains($0.trimmingCharacters(in: .whitespaces)) }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     enum TranslationError: LocalizedError {

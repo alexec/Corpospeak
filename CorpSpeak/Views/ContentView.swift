@@ -9,23 +9,13 @@ struct ContentView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .center, spacing: 8) {
-                    StatusPill(
-                        phase: model.phase,
-                        silenceDeadline: model.listener.silenceDeadline,
-                        silenceInterval: model.listener.silenceInterval
-                    )
+                    StatusPill(model: model)
                     MuteButton(model: model)
                     Spacer()
                     VoiceMenu(model: model)
                     VoiceHelpButton(model: model)
                 }
                 .padding(.top, 8)
-                .background {
-                    // Escape cuts off whatever is being spoken.
-                    Button("Stop speaking") { model.stopSpeaking() }
-                        .keyboardShortcut(.escape, modifiers: [])
-                        .hidden()
-                }
 
                 Transcript(model: model)
                     .padding(.vertical, 16)
@@ -244,23 +234,46 @@ private struct Backdrop: View {
 
 // MARK: - Status
 
+/// Shows what the app is doing. While it is translating or speaking, clicking it (or Escape) stops.
 private struct StatusPill: View {
-    let phase: CorpSpeakModel.Phase
-    let silenceDeadline: Date?
-    let silenceInterval: TimeInterval
+    let model: CorpSpeakModel
+    @State private var isHovering = false
+
+    private var phase: CorpSpeakModel.Phase { model.phase }
+    private var silenceDeadline: Date? { model.listener.silenceDeadline }
+    private var silenceInterval: TimeInterval { model.listener.silenceInterval }
+    private var canStop: Bool { model.canStop }
 
     var body: some View {
-        HStack(spacing: 8) {
-            dot
-            Text(text)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.8))
-                .lineLimit(2)
+        Button {
+            model.stopSpeaking()
+        } label: {
+            HStack(spacing: 8) {
+                if canStop && isHovering {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 14, height: 14)
+                } else {
+                    dot
+                }
+                Text(canStop && isHovering ? "Stop" : text)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(canStop && isHovering ? Color.red.opacity(0.7) : .white.opacity(0.06), in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
+            .contentShape(Capsule())
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(.white.opacity(0.06), in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
+        .buttonStyle(.plain)
+        .disabled(!canStop)
+        .keyboardShortcut(.escape, modifiers: [])
+        .onHover { isHovering = $0 }
+        .help(canStop ? "Stop translating and speaking (Esc)" : "")
+        .animation(.easeInOut(duration: 0.2), value: isHovering)
         .animation(.easeInOut(duration: 0.25), value: phase)
     }
 
