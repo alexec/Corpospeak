@@ -32,7 +32,6 @@ final class CorpSpeakModel {
 
     private enum Job {
         case utterance(String)
-        case voicePreview
     }
 
     private var pending: [Job] = []
@@ -127,7 +126,7 @@ final class CorpSpeakModel {
         listener.silenceInterval = Self.normalSilence
         speaker.enroll(sample)
         enrollmentHint = ""
-        enqueue(.voicePreview)
+        refreshPhase()
     }
 
     // MARK: Pipeline
@@ -156,9 +155,6 @@ final class CorpSpeakModel {
             switch pending.removeFirst() {
             case .utterance(let text):
                 await process(text)
-            case .voicePreview:
-                phase = .speaking
-                _ = await speaker.speak("Great news. We're ready to turn plain English into speech suitable for any of your upcoming presentations or meetings.")
             }
         }
 

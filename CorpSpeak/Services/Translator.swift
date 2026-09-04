@@ -36,7 +36,7 @@ final class Translator {
         do {
             let response = try await session.respond(
                 to: prompt,
-                options: GenerationOptions(temperature: 0.3, maximumResponseTokens: 200)
+                options: GenerationOptions(temperature: 0.45, maximumResponseTokens: 160)
             )
             return Self.clean(response.content)
         } catch LanguageModelSession.GenerationError.exceededContextWindowSize {
@@ -44,13 +44,19 @@ final class Translator {
         }
     }
 
-    /// The small model occasionally echoes the prompt's markers around its answer.
+    /// The small model occasionally echoes the prompt's markers around its answer, or opens
+    /// with a "Certainly! Here is the rewritten text:" line. Both are removed.
     private static func clean(_ output: String) -> String {
-        output
+        var lines = output
             .components(separatedBy: .newlines)
-            .filter { !["<<<", ">>>"].contains($0.trimmingCharacters(in: .whitespaces)) }
-            .joined(separator: "\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !["<<<", ">>>"].contains($0) }
+        if lines.count > 1, let first = lines.first,
+           first.hasSuffix(":"),
+           first.range(of: "rewritten|rewrite|here is|version", options: [.regularExpression, .caseInsensitive]) != nil {
+            lines.removeFirst()
+        }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     enum TranslationError: LocalizedError {

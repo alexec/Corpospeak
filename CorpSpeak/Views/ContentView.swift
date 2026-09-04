@@ -18,18 +18,7 @@ struct ContentView: View {
                 .padding(.top, 8)
 
                 Transcript(model: model)
-                    .padding(.vertical, 16)
-
-                Link(destination: URL(string: "https://www.youtube.com/shorts/JNRDj799VK4")!) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "play.rectangle")
-                        Text("Got the job. No one asked what it was.")
-                    }
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.45))
-                }
-                .buttonStyle(.plain)
-                .help("Watch on YouTube")
+                    .padding(.top, 16)
             }
             .padding(.horizontal, 36)
             .padding(.vertical, 28)
@@ -43,6 +32,15 @@ struct ContentView: View {
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
     }
+}
+
+// MARK: - Type scale
+
+private enum Type {
+    static let label = Font.system(size: 10, weight: .semibold, design: .rounded)
+    static let heard = Font.system(size: 21, weight: .regular, design: .rounded)
+    static let reply = Font.system(size: 34, weight: .medium, design: .serif)
+    static let control = Font.system(size: 12, weight: .medium, design: .rounded)
 }
 
 // MARK: - Transcript
@@ -70,64 +68,36 @@ private struct Transcript: View {
                     Spacer(minLength: 0)
 
                     if model.phase == .enrolling {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("FIRST, LET ME LEARN YOUR VOICE. SAY THIS:")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .tracking(2)
-                                .foregroundStyle(.white.opacity(0.45))
-                            Text(VoiceSample.phrase)
-                                .font(.system(size: 30, weight: .medium, design: .serif))
-                                .foregroundStyle(.white)
-                                .lineSpacing(4)
-                            if !model.enrollmentHint.isEmpty {
-                                Text(model.enrollmentHint)
-                                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                                    .foregroundStyle(Color.orange)
-                            }
-                            if isLive {
-                                Text(model.listener.liveTranscript)
-                                    .font(.system(size: 17, weight: .regular, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.5))
-                                    .italic()
-                            }
-                        }
-                        .frame(maxWidth: 720, alignment: .leading)
+                        enrollment
                     } else if heard.isEmpty && sentences.isEmpty {
-                        Text("Say something in plain English.")
-                            .font(.system(size: 30, weight: .regular, design: .serif))
-                            .foregroundStyle(.white.opacity(0.28))
+                        emptyState
                     } else {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(isLive ? "HEARING" : "YOU SAID")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .tracking(2)
-                                .foregroundStyle(.white.opacity(0.35))
-                            Text(heard)
-                                .font(.system(size: 19, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(isLive ? 0.55 : 0.7))
-                                .italic(isLive)
-                                .contentTransition(.opacity)
+                        if !heard.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                SectionLabel(isLive ? "HEARING" : "YOU SAID")
+                                WordFlow(text: heard, font: Type.heard, opacity: isLive ? 0.55 : 0.72, italic: isLive)
+                            }
                         }
-                        .animation(.easeOut(duration: 0.2), value: heard)
 
                         if !sentences.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
                                 ForEach(Array(sentences.enumerated()), id: \.offset) { index, sentence in
                                     Text(sentence)
-                                        .font(.system(size: 34, weight: .medium, design: .serif))
+                                        .font(Type.reply)
                                         .foregroundStyle(.white)
                                         .opacity(current == nil || current == index ? 1 : 0.32)
                                         .textSelection(.enabled)
                                         .lineSpacing(4)
                                         .id(Anchor.sentence(index))
+                                        // Sentences rise in one after another.
+                                        .transition(
+                                            .opacity.combined(with: .offset(y: 18))
+                                                .animation(.spring(duration: 0.55, bounce: 0.18).delay(Double(index) * 0.09))
+                                        )
                                 }
                             }
                             .frame(maxWidth: 720, alignment: .leading)
                             .animation(.easeInOut(duration: 0.3), value: current)
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .move(edge: .bottom)),
-                                removal: .opacity
-                            ))
                             .id(model.translated)
                         }
                     }
@@ -137,6 +107,7 @@ private struct Transcript: View {
                 // Short content sits vertically centred; long content scrolls.
                 .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .leading)
                 .animation(.spring(duration: 0.55, bounce: 0.15), value: model.translated)
+                .animation(.easeInOut(duration: 0.35), value: model.phase)
             }
             .scrollIndicators(.hidden)
             .mask(
@@ -160,6 +131,41 @@ private struct Transcript: View {
         }
     }
 
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Waveform(level: model.listener.audioLevel, isActive: isReadyToListen && !model.isMuted)
+                .frame(height: 56)
+            // Only invite the user to talk once the app is actually listening.
+            Text("Say something in plain English.")
+                .font(.system(size: 30, weight: .regular, design: .serif))
+                .foregroundStyle(.white.opacity(0.3))
+                .opacity(isReadyToListen ? 1 : 0)
+        }
+        .transition(.opacity)
+    }
+
+    private var enrollment: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionLabel("FIRST, LET ME LEARN YOUR VOICE. SAY THIS:")
+            Text(VoiceSample.phrase)
+                .font(.system(size: 30, weight: .medium, design: .serif))
+                .foregroundStyle(.white)
+                .lineSpacing(4)
+            if !model.enrollmentHint.isEmpty {
+                Text(model.enrollmentHint)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.orange)
+            }
+            if isLive {
+                WordFlow(text: model.listener.liveTranscript, font: .system(size: 17, design: .rounded), opacity: 0.5, italic: true)
+            }
+            Waveform(level: model.listener.audioLevel, isActive: true)
+                .frame(height: 40)
+        }
+        .frame(maxWidth: 720, alignment: .leading)
+        .transition(.opacity)
+    }
+
     /// The speaker's own sentence split while speaking, otherwise the same split of the text.
     private var displayedSentences: [String] {
         guard !model.translated.isEmpty else { return [] }
@@ -172,20 +178,146 @@ private struct Transcript: View {
     private var isLive: Bool {
         !model.listener.liveTranscript.isEmpty
     }
+
+    private var isReadyToListen: Bool {
+        model.phase == .listening || model.phase == .muted
+    }
+}
+
+private struct SectionLabel: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(Type.label)
+            .tracking(3)
+            .foregroundStyle(.white.opacity(0.38))
+    }
+}
+
+// MARK: - Word flow
+
+/// Text laid out word by word so new words can fade in as the recogniser delivers them.
+private struct WordFlow: View {
+    let text: String
+    let font: Font
+    let opacity: Double
+    let italic: Bool
+
+    var body: some View {
+        let words = text.split(separator: " ").map(String.init)
+        FlowLayout(spacing: 6, lineSpacing: 4) {
+            ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                Text(word)
+                    .font(font)
+                    .italic(italic)
+                    .foregroundStyle(.white.opacity(opacity))
+                    .transition(.opacity.combined(with: .offset(y: 5)))
+            }
+        }
+        .textSelection(.enabled)
+        .animation(.easeOut(duration: 0.28), value: words.count)
+        .animation(.easeInOut(duration: 0.2), value: opacity)
+    }
+}
+
+/// A left-to-right, wrapping layout.
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+    var lineSpacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(subviews, in: proposal.width ?? .infinity)
+        let height = rows.map(\.height).reduce(0, +) + CGFloat(max(0, rows.count - 1)) * lineSpacing
+        let width = rows.map(\.width).max() ?? 0
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(subviews, in: bounds.width) {
+            var x = bounds.minX
+            for (index, size) in row.items {
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + lineSpacing
+        }
+    }
+
+    private struct Row {
+        var items: [(Int, CGSize)] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func arrange(_ subviews: Subviews, in maxWidth: CGFloat) -> [Row] {
+        var rows: [Row] = [Row()]
+        for (index, subview) in subviews.enumerated() {
+            let size = subview.sizeThatFits(.unspecified)
+            var row = rows[rows.count - 1]
+            let needed = row.items.isEmpty ? size.width : row.width + spacing + size.width
+            if needed > maxWidth, !row.items.isEmpty {
+                rows.append(Row())
+                row = rows[rows.count - 1]
+            }
+            row.items.append((index, size))
+            row.width = row.items.isEmpty ? size.width : (row.width == 0 ? size.width : row.width + spacing + size.width)
+            row.height = max(row.height, size.height)
+            rows[rows.count - 1] = row
+        }
+        return rows
+    }
+}
+
+// MARK: - Waveform
+
+/// A row of bars that idles gently when quiet and swells with the microphone.
+private struct Waveform: View {
+    let level: Float
+    let isActive: Bool
+
+    private let barCount = 36
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: !isActive)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let loudness = Double(level)
+            HStack(alignment: .center, spacing: 4) {
+                ForEach(0..<barCount, id: \.self) { index in
+                    let position = Double(index) / Double(barCount - 1)
+                    let envelope = sin(position * .pi) // quiet at the ends, full in the middle
+                    let idle = 0.12 + 0.08 * (1 + sin(t * 1.4 + Double(index) * 0.5)) / 2
+                    let excited = loudness * envelope * (0.55 + 0.45 * abs(sin(t * 11 + Double(index) * 0.9)))
+                    let height = min(1, idle + excited)
+                    Capsule()
+                        .fill(.white.opacity(isActive ? 0.22 + 0.55 * loudness * envelope : 0.1))
+                        .frame(width: 3, height: 4 + 48 * height)
+                }
+            }
+            .animation(.easeOut(duration: 0.08), value: level)
+        }
+        .opacity(isActive ? 1 : 0.5)
+        .animation(.easeInOut(duration: 0.3), value: isActive)
+    }
 }
 
 // MARK: - Backdrop
 
-/// Dark gradient with a glow in the corner that breathes with the microphone and the phase.
+/// Dark gradient with a glow that drifts slowly, breathes with the microphone, and pulses with
+/// the phase.
 private struct Backdrop: View {
     let phase: CorpSpeakModel.Phase
     let level: Float
 
     var body: some View {
-        TimelineView(.animation(paused: !isPulsing)) { context in
-            let pulse = isPulsing ? 0.5 + 0.5 * sin(context.date.timeIntervalSinceReferenceDate * 2.4) : 0
-            let scale = 1 + (isPulsing ? 0.18 * pulse : 0.8 * Double(level))
-            let opacity = 0.35 + (isPulsing ? 0.3 * pulse : 0.55 * Double(level))
+        TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let pulse = isPulsing ? 0.5 + 0.5 * sin(t * 2.4) : 0
+            let loudness = Double(level)
+            let scale = 1 + (isPulsing ? 0.22 * pulse : 1.3 * loudness)
+            let opacity = 0.42 + (isPulsing ? 0.32 * pulse : 0.6 * loudness)
 
             ZStack {
                 LinearGradient(
@@ -198,16 +330,19 @@ private struct Backdrop: View {
                     Circle()
                         .fill(
                             RadialGradient(
-                                colors: [glowColor.opacity(opacity), glowColor.opacity(0.08), .clear],
+                                colors: [glowColor.opacity(opacity), glowColor.opacity(0.1), .clear],
                                 center: .center,
                                 startRadius: 0,
-                                endRadius: 320
+                                endRadius: 340
                             )
                         )
-                        .frame(width: 640, height: 640)
+                        .frame(width: 680, height: 680)
                         .scaleEffect(scale)
-                        .blur(radius: 30)
-                        .position(x: geo.size.width - 80, y: geo.size.height + 60)
+                        .blur(radius: 34)
+                        .position(
+                            x: geo.size.width - 60 + 50 * sin(t * 0.21),
+                            y: geo.size.height + 40 + 36 * cos(t * 0.16)
+                        )
                 }
                 .animation(.easeOut(duration: 0.1), value: level)
                 .animation(.easeInOut(duration: 0.6), value: phase)
@@ -258,14 +393,14 @@ private struct StatusPill: View {
                     dot
                 }
                 Text(canStop && isHovering ? "Stop" : text)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(2)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(canStop && isHovering ? Color.red.opacity(0.7) : .white.opacity(0.06), in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
+            .padding(.horizontal, 13)
+            .padding(.vertical, 8)
+            .background(canStop && isHovering ? Color.red.opacity(0.7) : .white.opacity(0.11), in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.14)))
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -336,10 +471,10 @@ private struct MuteButton: View {
         } label: {
             Image(systemName: model.isMuted ? "mic.slash.fill" : "mic.fill")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(model.isMuted ? Color.orange : .white.opacity(0.7))
+                .foregroundStyle(model.isMuted ? Color.orange : .white.opacity(0.6))
                 .frame(width: 30, height: 30)
-                .background(.white.opacity(model.isMuted ? 0.12 : 0.06), in: Circle())
-                .overlay(Circle().strokeBorder(.white.opacity(0.08)))
+                .background(.white.opacity(model.isMuted ? 0.12 : 0.05), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.07)))
         }
         .buttonStyle(.plain)
         .keyboardShortcut("m", modifiers: .command)
@@ -364,12 +499,12 @@ private struct VoiceMenu: View {
                 Image(systemName: icon)
                 Text(label)
             }
-            .font(.system(size: 12, weight: .medium, design: .rounded))
-            .foregroundStyle(.white.opacity(0.8))
+            .font(Type.control)
+            .foregroundStyle(.white.opacity(0.65))
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .background(.white.opacity(0.06), in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
+            .background(.white.opacity(0.05), in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.07)))
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -409,10 +544,10 @@ private struct VoiceHelpButton: View {
         } label: {
             Image(systemName: "questionmark.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(model.speaker.hasOwnVoice ? 0.5 : 0.85))
+                .foregroundStyle(.white.opacity(model.speaker.hasOwnVoice ? 0.45 : 0.85))
                 .frame(width: 30, height: 30)
-                .background(.white.opacity(0.06), in: Circle())
-                .overlay(Circle().strokeBorder(.white.opacity(0.08)))
+                .background(.white.opacity(0.05), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.07)))
         }
         .buttonStyle(.plain)
         .help("About the voice")
@@ -447,6 +582,13 @@ private struct VoiceHelp: View {
             Text("CorpSpeak speaks in **your voice**, cloned on this Mac by ZipVoice from the phrase you read on first launch. Nothing you say leaves the Mac.")
             Text("If it does not sound like you, choose *Record my voice again…* and read the phrase in one go, at a natural pace, in a quiet room.")
                 .foregroundStyle(.secondary)
+
+            Divider()
+
+            Link(destination: URL(string: "https://www.youtube.com/shorts/JNRDj799VK4")!) {
+                Label("Got the job. No one asked what it was.", systemImage: "play.rectangle")
+            }
+            .foregroundStyle(.secondary)
         }
         .font(.callout)
         .padding(18)
