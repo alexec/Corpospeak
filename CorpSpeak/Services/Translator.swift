@@ -55,7 +55,7 @@ final class Translator {
         do {
             let response = try await session.respond(
                 to: prompt,
-                options: GenerationOptions(temperature: 0.6, maximumResponseTokens: 200)
+                options: GenerationOptions(temperature: 0.3, maximumResponseTokens: 200)
             )
             return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch LanguageModelSession.GenerationError.exceededContextWindowSize {

@@ -167,26 +167,26 @@ enum CorpSpeakStyle {
 
     /// Short one-line pairs. Small on-device models follow these better than a long passage.
     static let shortExamples: [(english: String, corpSpeak: String)] = [
-        ("I already told you this.", "Per my last email."),
-        ("Can we talk about this later?", "Let's circle back once we've had a few cycles to pressure test the broader implications."),
-        ("I don't know.", "That's a great question."),
-        ("Thanks for your time.", "Thank you for allocating some bandwidth to this sync."),
-        ("I agree.", "Completely aligned."),
-        ("Let's finish this by Friday.", "Let's land the plane on this by end of week."),
-        ("We're laying people off.", "We're right-sizing the org."),
-        ("The project is late because we didn't plan it.", "Before we boil the ocean on timeline accountability, we need to realign around whether the roadmap was ever a map or more of a directional weather system."),
-        ("Let's fix the delay.", "Let's form a task force to define the delay."),
-        ("Why is the project late?", "Just at a high level, can we level set on where the timeline currently sits and what's driving the delta?"),
+        ("I already told you this.", "Per my last email, I've already flagged this."),
+        ("Can we talk about this later?", "Can we circle back on this later?"),
+        ("I don't know.", "That's a great question. I don't have visibility into that yet."),
+        ("I don't have time this week.", "I don't have the bandwidth this week."),
+        ("Let's finish the report by Friday.", "Let's land the plane on the report by end of week."),
+        ("We're laying off ten people in sales.", "We're right-sizing the sales team by ten."),
+        ("The project is late because we didn't plan it.", "The project is behind schedule because we never aligned on a plan."),
+        ("Sarah, please fix the login bug before the demo.", "Sarah, can you prioritize the login bug ahead of the demo?"),
+        ("Why is the AI roadmap behind schedule?", "At a high level, what's driving the delta on the AI roadmap timeline?"),
     ]
 
-    /// How a master practitioner talks. Distilled from a recorded interview for a role in
-    /// "teaching leadership how to contribute in meetings without adding any additional clarity".
+    /// What CorpSpeak does to a sentence, and what it must never do.
     static let stylePrinciples = """
-        - Sound like someone with access to a dashboard no one else can see.
-        - Say less with more: more words, fewer commitments.
-        - Never answer directly. Validate the concern, create altitude, then expand the surface \
-        area of the question until the room forgets what was asked.
-        - Problems are never solved. They are defined, realigned around, and given to a task force.
+        - CorpSpeak dresses up a sentence. It never changes what the sentence says.
+        - Every fact survives: names, numbers, dates, products, who does what, and what is being \
+        asked for. A refusal stays a refusal, a deadline stays a deadline, a question stays a question.
+        - Swap plain words for corporate ones and add a little polish. Do not add new claims, \
+        promises, plans, or filler sentences.
+        - Sound like someone with access to a dashboard no one else can see, while saying exactly \
+        what the speaker said.
         """
 
     static var englishToCorpSpeakInstructions: String {
@@ -194,16 +194,13 @@ enum CorpSpeakStyle {
             .map { "Plain English: \($0.english)\nCorpSpeak: \($0.corpSpeak)" }
             .joined(separator: "\n\n")
         return """
-        You translate plain English into CorpSpeak, the dialect of corporate meetings. Rewrite what \
-        the speaker said so it sounds like it was said in a meeting: polished, upbeat, jargon-heavy, \
-        and slightly evasive. Any corporate jargon is welcome: synergy, stakeholders, alignment, \
-        leverage, cadence, bandwidth, unlock, value-add, and so on.
+        You translate plain English into CorpSpeak, the dialect of corporate meetings. The output \
+        must mean the same thing as the input; only the wording changes.
 
-        How a CorpSpeak master talks:
         \(stylePrinciples)
 
-        Phrasebook, for flavor and inspiration (plain meaning → CorpSpeak phrase). You do not \
-        have to use these exact phrases:
+        Phrasebook, for flavor (plain meaning → CorpSpeak phrase). Use a phrase only when the \
+        speaker actually means that:
         \(encodeGlossaryText)
 
         Examples:
@@ -211,10 +208,10 @@ enum CorpSpeakStyle {
         \(examples)
 
         Rules:
-        - Rewrite every sentence. Do not drop any sentence or idea, and do not add new ones.
+        - Rewrite every sentence, one for one. Do not drop any sentence or idea, and do not add any.
         - Keep the speaker's meaning, tense and point of view. A question stays a question: \
         rewrite it in CorpSpeak, never answer it.
-        - Use corporate jargon freely. The phrasebook is inspiration, not a checklist.
+        - Keep roughly the same length as the original.
         - Output only the rewritten text. No preamble, no quotes, no explanation.
         """
     }

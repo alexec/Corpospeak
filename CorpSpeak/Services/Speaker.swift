@@ -3,12 +3,11 @@ import NaturalLanguage
 import Observation
 
 /// Reads text aloud in the user's own cloned voice, one sentence at a time, and reports which
-/// sentence is playing. Apple's built-in voice fills in until the model and a recording exist.
+/// sentence is playing. There is no other voice: until the user has recorded theirs and the
+/// model is loaded, nothing is spoken.
 @MainActor
 @Observable
 final class Speaker {
-    enum Engine: Equatable { case ownVoice, apple }
-
     let modelStore = ModelStore()
 
     private(set) var isSpeaking = false
@@ -22,8 +21,8 @@ final class Speaker {
 
     private var zipVoice: ZipVoiceSynthesizer?
     private var loadTask: Task<Void, Never>?
+    private var prepareTask: Task<Void, Never>?
     private let player = AudioPlayer()
-    private let apple = AppleSpeech()
     private var generation = 0
 
     init() {
@@ -32,16 +31,22 @@ final class Speaker {
 
     var hasOwnVoice: Bool { voiceSample != nil }
 
-    /// Which engine `speak` would use right now.
-    var engine: Engine {
-        voiceSample != nil && zipVoice != nil ? .ownVoice : .apple
-    }
+    /// True once the cloning model is loaded and can synthesize.
+    var isReady: Bool { zipVoice != nil }
 
     /// Installs the model if needed and loads it. Listening carries on while this runs.
     func prepare() async {
-        await loadClonerIfPossible()
-        await modelStore.ensureInstalled()
-        await loadClonerIfPossible()
+        if let prepareTask {
+            await prepareTask.value
+            return
+        }
+        let task = Task {
+            await loadClonerIfPossible()
+            await modelStore.ensureInstalled()
+            await loadClonerIfPossible()
+        }
+        prepareTask = task
+        await task.value
     }
 
     /// Loads the cloner if its files are on disk and it is not loaded yet. Only one load runs
@@ -85,11 +90,17 @@ final class Speaker {
 
     // MARK: Speaking
 
-    func speak(_ text: String) async {
+    /// Speaks in the user's voice. Waits for the model if it is still installing. Returns false
+    /// if nothing could be spoken: no recording yet, or the model failed to install.
+    @discardableResult
+    func speak(_ text: String) async -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else { return true }
 
-        await loadClonerIfPossible()
+        if zipVoice == nil {
+            await prepare()
+        }
+        guard let zipVoice, let sample = voiceSample else { return false }
 
         stop()
         generation += 1
@@ -104,12 +115,6 @@ final class Speaker {
             }
         }
 
-        guard let zipVoice, let sample = voiceSample else {
-            currentSentence = 0
-            await apple.speak(text)
-            return
-        }
-
         // Synthesize the next sentence while the current one plays.
         func prefetch(_ index: Int) -> Task<AudioClip?, Never> {
             let sentence = sentences[index]
@@ -121,21 +126,21 @@ final class Speaker {
         var upcoming = prefetch(0)
         for index in sentences.indices {
             let clip = await upcoming.value
-            guard generation == thisGeneration else { return }
+            guard generation == thisGeneration else { return true }
             if index + 1 < sentences.count {
                 upcoming = prefetch(index + 1)
             }
             guard let clip else { continue }
             currentSentence = index
             await player.play(clip)
-            guard generation == thisGeneration else { return }
+            guard generation == thisGeneration else { return true }
         }
+        return true
     }
 
     func stop() {
         generation += 1
         player.stop()
-        apple.stop()
         isSpeaking = false
         currentSentence = nil
     }

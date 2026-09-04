@@ -150,7 +150,7 @@ final class CorpSpeakModel {
                 await process(text)
             case .voicePreview:
                 phase = .speaking
-                await speaker.speak("Great news. We're ready to turn plain English into speech suitable for any of your upcoming presentations or meetings.")
+                _ = await speaker.speak("Great news. We're ready to turn plain English into speech suitable for any of your upcoming presentations or meetings.")
             }
         }
 
@@ -171,7 +171,11 @@ final class CorpSpeakModel {
         do {
             translated = try await translator.translate(text, direction: direction)
             phase = .speaking
-            await speaker.speak(translated)
+            if await !speaker.speak(translated) {
+                phase = .error(speaker.hasOwnVoice
+                    ? "The voice model isn't ready. Check the voice menu."
+                    : "Record your voice first.")
+            }
         } catch {
             phase = .error(error.localizedDescription)
         }

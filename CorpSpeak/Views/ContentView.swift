@@ -370,17 +370,16 @@ private struct VoiceMenu: View {
         case .downloading(_, let progress): "Downloading voice cloning \(Int(progress * 100))%"
         case .unpacking: "Preparing voice cloning…"
         default:
-            switch model.speaker.engine {
-            case .ownVoice: "Your voice"
-            case .apple: model.speaker.hasOwnVoice ? "Loading your voice…" : "Built-in voice"
-            }
+            if !model.speaker.hasOwnVoice { "No voice yet" }
+            else if model.speaker.isReady { "Your voice" }
+            else { "Loading your voice…" }
         }
     }
 
     private var icon: String {
         switch model.speaker.modelStore.state {
         case .downloading, .unpacking: "arrow.down.circle"
-        default: model.speaker.engine == .ownVoice ? "person.wave.2" : "waveform"
+        default: model.speaker.hasOwnVoice ? "person.wave.2" : "person.crop.circle.badge.questionmark"
         }
     }
 }
@@ -397,7 +396,7 @@ private struct VoiceHelpButton: View {
         } label: {
             Image(systemName: "questionmark.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(model.speaker.engine == .apple ? 0.85 : 0.5))
+                .foregroundStyle(.white.opacity(model.speaker.hasOwnVoice ? 0.5 : 0.85))
                 .frame(width: 30, height: 30)
                 .background(.white.opacity(0.06), in: Circle())
                 .overlay(Circle().strokeBorder(.white.opacity(0.08)))
@@ -420,13 +419,13 @@ private struct VoiceHelp: View {
 
             switch speaker.modelStore.state {
             case .downloading(_, let progress):
-                Text("Downloading the voice cloning model (about 160 MB, once). Apple's built-in voice is used until it arrives.")
+                Text("Downloading the voice cloning model (about 160 MB, once). Nothing is spoken until it arrives.")
                 ProgressView(value: progress)
             case .unpacking:
                 Text("Unpacking the voice cloning model. Nearly there.")
             case .failed(let message):
                 Text("The voice cloning model could not be installed: \(message)")
-                Text("Relaunch to try the download again.")
+                Text("Nothing can be spoken without it. Relaunch to try the download again.")
                     .foregroundStyle(.secondary)
             default:
                 EmptyView()
