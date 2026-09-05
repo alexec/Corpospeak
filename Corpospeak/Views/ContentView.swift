@@ -169,8 +169,15 @@ private struct Transcript: View {
                 .font(type.prompt)
                 .foregroundStyle(.white.opacity(0.3))
                 .opacity(isReadyToListen ? 1 : 0)
+            // Until the app speaks in the user's own voice, say why that would be better. Only
+            // here, before the first sentence, so it never nags mid-conversation.
+            if isReadyToListen, model.canImprovePersonalVoice {
+                PersonalVoiceNudge(model: model, compact: compact)
+                    .transition(.opacity)
+            }
         }
         .transition(.opacity)
+        .animation(.easeInOut(duration: 0.3), value: model.canImprovePersonalVoice)
     }
 
     /// The speaker's own sentence split while speaking, otherwise the same split of the text.
@@ -552,20 +559,16 @@ private struct VoiceMenu: View {
 
     var body: some View {
         Menu {
-            Section("Voice") {
-                ForEach(model.speaker.voices) { option in
-                    Button {
-                        model.selectVoice(id: option.id)
-                    } label: {
-                        if option.id == model.speaker.selectedVoiceID {
-                            Label(option.name, systemImage: "checkmark")
-                        } else {
-                            Text(option.name)
-                        }
-                    }
+            // The user's own voice comes first, or the one step that would make it available.
+            if offersPersonalVoice {
+                Section("Your Voice") {
+                    ForEach(model.speaker.personalVoiceOptions, content: voiceButton)
+                    personalVoiceAction
                 }
             }
-            personalVoiceAction
+            Section("System Voices") {
+                ForEach(model.speaker.systemVoiceOptions, content: voiceButton)
+            }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: icon)
@@ -588,6 +591,27 @@ private struct VoiceMenu: View {
         .accessibilityLabel("Voice: \(label)")
     }
 
+    private func voiceButton(_ option: Speaker.VoiceOption) -> some View {
+        Button {
+            model.selectVoice(id: option.id)
+        } label: {
+            if option.id == model.speaker.selectedVoiceID {
+                Label(option.name, systemImage: "checkmark")
+            } else {
+                Text(option.name)
+            }
+        }
+    }
+
+    /// False only where a Personal Voice is out of the question, such as the Simulator.
+    private var offersPersonalVoice: Bool {
+        switch model.speaker.personalVoiceStatus {
+        case .checking, .unsupported: false
+        case .notDetermined, .denied, .noVoice, .available: true
+        }
+    }
+
+    /// The one thing standing between the user and their own voice, if anything.
     @ViewBuilder
     private var personalVoiceAction: some View {
         switch model.speaker.personalVoiceStatus {
@@ -595,8 +619,12 @@ private struct VoiceMenu: View {
             Button("Use my Personal Voice…") {
                 Task { await model.authorizeVoice() }
             }
-        case .denied, .noVoice:
-            Button("Open \(Platform.settings)…") {
+        case .denied:
+            Button("Allow Personal Voice in \(Platform.settings)…") {
+                model.openVoiceSettings()
+            }
+        case .noVoice:
+            Button("Create a Personal Voice in \(Platform.settings)…") {
                 model.openVoiceSettings()
             }
         case .checking, .unsupported, .available:
@@ -610,6 +638,72 @@ private struct VoiceMenu: View {
 
     private var icon: String {
         model.speaker.selectedVoice?.isPersonalVoice == true ? "person.wave.2" : "waveform"
+    }
+}
+
+// MARK: - Personal Voice nudge
+
+/// A line under the empty-state prompt that says the app is better in the user's own voice, with
+/// the one tap that gets them there: allow it, set it up in Settings, or switch to it.
+private struct PersonalVoiceNudge: View {
+    let model: CorpospeakModel
+    let compact: Bool
+
+    var body: some View {
+        let layout = compact ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 14))
+        layout {
+            HStack(spacing: 8) {
+                Image(systemName: "person.wave.2")
+                    .foregroundStyle(.cyan.opacity(0.8))
+                Text(message)
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .font(.system(size: compact ? 13 : 14, design: .rounded))
+
+            Button(action: act) {
+                Text(actionTitle)
+                    .font(Type.control)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.cyan.opacity(0.22), in: Capsule())
+                    .overlay(Capsule().strokeBorder(.cyan.opacity(0.35)))
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var message: String {
+        switch model.speaker.personalVoiceStatus {
+        case .notDetermined, .denied:
+            "Corpospeak is better in your own voice."
+        case .noVoice:
+            "Corpospeak is better in your own voice. Create one in \(Platform.voiceSettingsPath)."
+        case .available:
+            "Your Personal Voice “\(model.speaker.personalVoiceOptions.first?.name ?? "")” is ready."
+        case .checking, .unsupported:
+            ""
+        }
+    }
+
+    private var actionTitle: String {
+        switch model.speaker.personalVoiceStatus {
+        case .notDetermined: "Use my Personal Voice"
+        case .denied, .noVoice: "Open \(Platform.settings)"
+        case .available: "Speak in my voice"
+        case .checking, .unsupported: ""
+        }
+    }
+
+    private func act() {
+        switch model.speaker.personalVoiceStatus {
+        case .notDetermined: Task { await model.authorizeVoice() }
+        case .denied, .noVoice: model.openVoiceSettings()
+        case .available: model.selectPersonalVoice()
+        case .checking, .unsupported: break
+        }
     }
 }
 
@@ -648,10 +742,10 @@ private struct VoiceHelp: View {
             Text("Voice")
                 .font(.headline)
 
-            Text("Corpospeak speaks with a system voice by default, so it works right away. Pick **Use my Personal Voice…** from the voice menu to have it speak in your own cloned voice instead, once you've created one in \(Platform.voiceSettingsPath).")
+            Text("Corpospeak is at its best in your own voice. Create a Personal Voice in \(Platform.voiceSettingsPath) (ten phrases, about a minute) and allow Corpospeak to use it. It then speaks as you by default; the system voices are there as a fallback so the app works right away regardless.")
             Text(statusLine)
                 .foregroundStyle(.secondary)
-            Text("Pick any installed voice from the voice menu at any time. Nothing you say leaves your \(Platform.device).")
+            Text("Your voice leads the voice menu, with the system voices below it. Nothing you say leaves your \(Platform.device).")
                 .foregroundStyle(.secondary)
 
             Divider()
@@ -670,13 +764,13 @@ private struct VoiceHelp: View {
         switch speaker.personalVoiceStatus {
         case .checking: "Looking for a Personal Voice…"
         case .unsupported: "This \(Platform.device) can't offer a Personal Voice, so only system voices are available."
-        case .notDetermined: "You haven't let Corpospeak use your Personal Voice yet. Choose “Use my Personal Voice…” from the voice menu."
-        case .denied: "Corpospeak isn't allowed to use your Personal Voice. Turn on “Allow Apps to Request to Use” in \(Platform.settings)."
-        case .noVoice: "You haven't created a Personal Voice yet."
+        case .notDetermined: "You haven't let Corpospeak use your Personal Voice yet. Choose “Use my Personal Voice…” at the top of the voice menu."
+        case .denied: "Corpospeak isn't allowed to use your Personal Voice. Turn on “Allow Apps to Request to Use” in \(Platform.voiceSettingsPath)."
+        case .noVoice: "You haven't created a Personal Voice yet. Set one up in \(Platform.voiceSettingsPath) and Corpospeak will switch to it."
         case .available:
             speaker.selectedVoice?.isPersonalVoice == true
                 ? "Speaking with your Personal Voice, “\(speaker.selectedVoice?.name ?? "")”."
-                : "Your Personal Voice is available in the voice menu."
+                : "Your Personal Voice is ready at the top of the voice menu."
         }
     }
 }

@@ -5,11 +5,11 @@ import Observation
 
 /// Reads text aloud, one sentence at a time, and reports which sentence is playing.
 ///
-/// By default Corpospeak speaks with a system voice, so it works the moment it launches — no
-/// setup, and it works in the Simulator. A user's Personal Voice, which the system creates in
-/// Settings → Accessibility → Personal Voice, is an option alongside the system voices once
-/// Corpospeak is allowed to use it: pick it from the voice menu to have Corpospeak speak in your
-/// own cloned voice instead.
+/// Corpospeak is at its best in the user's own voice, so the Personal Voice — which the system
+/// creates in Settings → Accessibility → Personal Voice — leads the voice menu and is spoken
+/// with by default as soon as Corpospeak is allowed to use it. System voices are the fallback:
+/// they need no setup, so the app works the moment it launches, and in the Simulator, which
+/// cannot create a Personal Voice.
 @MainActor
 @Observable
 final class Speaker {
@@ -38,7 +38,8 @@ final class Speaker {
     }
 
     private(set) var personalVoiceStatus: PersonalVoiceStatus = .checking
-    /// Every voice Corpospeak can currently speak with, system voices first.
+    /// Every voice Corpospeak can currently speak with: the user's Personal Voices first, then
+    /// the system voices.
     private(set) var voices: [VoiceOption] = []
     /// The identifier of the voice Corpospeak speaks with. `nil` only if no voice at all is
     /// installed, which should not happen on a real device or the Simulator.
@@ -86,6 +87,13 @@ final class Speaker {
         }
     }
 
+    /// Asks the system for permission to use the Personal Voice, but only if the user hasn't
+    /// been asked before. Called at launch, so the app starts in the user's voice when it can.
+    func requestAuthorizationIfNeeded() async {
+        guard personalVoiceStatus == .notDetermined else { return }
+        await requestAuthorization()
+    }
+
     /// Asks the system for permission to use the Personal Voice. The first time, it shows its
     /// own prompt; after that it answers from the user's earlier choice.
     func requestAuthorization() async {
@@ -94,6 +102,12 @@ final class Speaker {
         }
         refresh()
     }
+
+    /// The user's Personal Voices, if any: `voices` without the system voices.
+    var personalVoiceOptions: [VoiceOption] { voices.filter(\.isPersonalVoice) }
+
+    /// The system voices: `voices` without the user's Personal Voices.
+    var systemVoiceOptions: [VoiceOption] { voices.filter { !$0.isPersonalVoice } }
 
     /// Selects the voice to speak with and remembers the choice for next launch.
     func select(voiceID: String) {
@@ -121,14 +135,15 @@ final class Speaker {
         // The user's own Personal Voice, if any, leads the list; system voices follow.
         voices = personal + system
 
-        if let selectedVoiceID, voices.contains(where: { $0.id == selectedVoiceID }) {
-            // Still valid; leave it as the user chose it.
-        } else if let saved = UserDefaults.standard.string(forKey: Self.selectedVoiceDefaultsKey),
-                  voices.contains(where: { $0.id == saved }) {
+        if let saved = UserDefaults.standard.string(forKey: Self.selectedVoiceDefaultsKey),
+           voices.contains(where: { $0.id == saved }) {
+            // The user picked this one; keep it.
             selectedVoiceID = saved
         } else {
-            // A system voice by default; the user opts into their Personal Voice from the menu.
-            selectedVoiceID = Self.defaultSystemVoice()?.identifier ?? voices.first?.id
+            // Until the user picks a voice, the default is their own Personal Voice as soon as
+            // there is one — including the moment it is authorized or finishes processing while
+            // the app runs — and the system's default voice until then.
+            selectedVoiceID = personal.first?.id ?? Self.defaultSystemVoice()?.identifier ?? voices.first?.id
         }
     }
 

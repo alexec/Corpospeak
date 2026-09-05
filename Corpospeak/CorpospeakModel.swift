@@ -45,6 +45,9 @@ final class CorpospeakModel {
         }
         await listener.start()
         refreshPhase()
+        // Ask to use the Personal Voice on first launch, after the microphone prompts: the app
+        // is at its best in the user's own voice, and once allowed it becomes the default.
+        await speaker.requestAuthorizationIfNeeded()
     }
 
     func stop() {
@@ -82,6 +85,22 @@ final class CorpospeakModel {
     /// Asks the system to let Corpospeak use the Personal Voice.
     func authorizeVoice() async {
         await speaker.requestAuthorization()
+    }
+
+    /// Switches to the user's Personal Voice, if one is available.
+    func selectPersonalVoice() {
+        guard let voice = speaker.personalVoiceOptions.first else { return }
+        speaker.select(voiceID: voice.id)
+    }
+
+    /// True when the device supports a Personal Voice but Corpospeak isn't speaking with one yet:
+    /// permission not asked or refused, no voice created, or a system voice picked instead.
+    var canImprovePersonalVoice: Bool {
+        switch speaker.personalVoiceStatus {
+        case .checking, .unsupported: false
+        case .notDetermined, .denied, .noVoice: true
+        case .available: speaker.selectedVoice?.isPersonalVoice != true
+        }
     }
 
     /// Opens the settings app as near to Accessibility → Personal Voice as the platform allows.
