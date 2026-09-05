@@ -1,14 +1,15 @@
+import AppKit
 import Foundation
 import Observation
 
 /// Wires the services together: listen → translate → speak → listen.
-/// On first launch, before any of that, it records the user's voice for cloning.
+/// Until the user's Personal Voice is available, it holds in a setup step instead.
 @MainActor
 @Observable
 final class CorpSpeakModel {
     enum Phase: Equatable {
         case starting
-        case enrolling
+        case setup
         case listening
         case muted
         case translating
@@ -20,15 +21,12 @@ final class CorpSpeakModel {
     let translator = Translator()
     let speaker = Speaker()
 
-
     private(set) var phase: Phase = .starting
 
     /// The last thing the user said.
     private(set) var heard = ""
     /// Its CorpSpeak rendering.
     private(set) var translated = ""
-    /// Shown during enrollment when a take was not usable.
-    private(set) var enrollmentHint = ""
 
     private enum Job {
         case utterance(String)
@@ -36,27 +34,30 @@ final class CorpSpeakModel {
 
     private var pending: [Job] = []
     private var isProcessing = false
-    private var isEnrolling = false
+    private var isSettingUp = false
     /// Bumped by `stopSpeaking` so a translation in flight is discarded instead of spoken.
     private var cancelGeneration = 0
-    private static let normalSilence: TimeInterval = 2.0
-    private static let enrollmentSilence: TimeInterval = 2.5
+
+    /// Where macOS creates and manages the Personal Voice.
+    private static let voiceSettingsURL = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension?PersonalVoice")!
 
     var isMuted: Bool { listener.isMuted }
 
     func start() async {
         translator.checkAvailability()
 
-        // Fetch and load the voice models in the background; listening does not wait for them.
-        Task { await speaker.prepare() }
+        speaker.onVoiceChange = { [weak self] in
+            self?.voiceChanged()
+        }
+        speaker.prepare()
 
         listener.onUtterance = { [weak self] text in
             self?.handleUtterance(text)
         }
         await listener.start()
 
-        if listener.status == .listening || listener.status == .muted, !speaker.hasOwnVoice {
-            beginEnrollment()
+        if listener.status == .listening || listener.status == .muted, !speaker.isReady {
+            beginSetup()
         } else {
             refreshPhase()
         }
@@ -70,7 +71,7 @@ final class CorpSpeakModel {
     /// Mutes or unmutes the microphone. Muting mid-sentence drops that sentence.
     func toggleMute() {
         listener.setMuted(!listener.isMuted)
-        if !isProcessing { refreshPhase() }
+        if !isProcessing, !isSettingUp { refreshPhase() }
     }
 
     /// True while there is something to stop: a translation in flight or speech playing.
@@ -87,56 +88,48 @@ final class CorpSpeakModel {
         speaker.stop()
     }
 
-    // MARK: Enrollment
+    // MARK: Voice setup
 
-    /// Asks the user to read the phrase and records it. Also used to re-record later.
-    func beginEnrollment() {
-        guard listener.status != .idle else { return }
-        if case .unavailable = listener.status { return }
-        listener.setMuted(false)
-        speaker.stop()
-        pending.removeAll()
-        isEnrolling = true
-        enrollmentHint = ""
-        heard = ""
-        translated = ""
-        listener.silenceInterval = Self.enrollmentSilence
-        listener.resume()
-        listener.startCapture()
-        phase = .enrolling
+    /// Asks macOS to let CorpSpeak use the Personal Voice.
+    func authorizeVoice() async {
+        await speaker.requestAuthorization()
     }
 
-    private func finishEnrollment(heard text: String) {
-        let sample = listener.stopCapture()?.trimmed()
-        let match = VoiceSample.match(text)
-        let duration = sample?.duration ?? 0
-        guard let sample, match >= 0.6, duration >= 3, duration <= 20 else {
-            if match < 0.6 {
-                enrollmentHint = "That didn't sound like the phrase. Once more, from the top."
-            } else if duration < 3 {
-                enrollmentHint = "That was too short. Once more, a little slower."
-            } else {
-                enrollmentHint = "That ran long. Once more, in one go."
-            }
-            listener.startCapture()
-            return
-        }
+    /// Opens System Settings at Accessibility → Personal Voice.
+    func openVoiceSettings() {
+        NSWorkspace.shared.open(Self.voiceSettingsURL)
+    }
 
-        isEnrolling = false
-        listener.silenceInterval = Self.normalSilence
-        speaker.enroll(sample)
-        enrollmentHint = ""
+    /// Holds the pipeline until a Personal Voice is available. Listening pauses meanwhile.
+    private func beginSetup() {
+        guard listener.status != .idle else { return }
+        if case .unavailable = listener.status { return }
+        speaker.stop()
+        pending.removeAll()
+        isSettingUp = true
+        listener.pause()
+        phase = .setup
+    }
+
+    private func finishSetup() {
+        isSettingUp = false
+        listener.resume()
         refreshPhase()
+    }
+
+    private func voiceChanged() {
+        if speaker.isReady {
+            if isSettingUp { finishSetup() }
+        } else if !isSettingUp, !isProcessing {
+            beginSetup()
+        }
     }
 
     // MARK: Pipeline
 
     private func handleUtterance(_ text: String) {
-        if isEnrolling {
-            finishEnrollment(heard: text)
-        } else {
-            enqueue(.utterance(text))
-        }
+        guard !isSettingUp else { return }
+        enqueue(.utterance(text))
     }
 
     private func enqueue(_ job: Job) {
@@ -158,8 +151,12 @@ final class CorpSpeakModel {
             }
         }
 
-        listener.resume()
-        refreshPhase()
+        if speaker.isReady {
+            listener.resume()
+            refreshPhase()
+        } else {
+            beginSetup()
+        }
     }
 
     private func process(_ text: String) async {
@@ -178,9 +175,7 @@ final class CorpSpeakModel {
             guard generation == cancelGeneration else { return }
             phase = .speaking
             if await !speaker.speak(translated) {
-                phase = .error(speaker.hasOwnVoice
-                    ? "The voice model isn't ready. Check the voice menu."
-                    : "Record your voice first.")
+                phase = .error("Your Personal Voice isn't available. Check the voice menu.")
             }
         } catch {
             phase = .error(error.localizedDescription)
@@ -192,8 +187,8 @@ final class CorpSpeakModel {
             phase = .error(why)
         } else if case .unavailable(let why) = translator.availability {
             phase = .error(why)
-        } else if isEnrolling {
-            phase = .enrolling
+        } else if isSettingUp {
+            phase = .setup
         } else if listener.status == .muted {
             phase = .muted
         } else if listener.status == .listening {
