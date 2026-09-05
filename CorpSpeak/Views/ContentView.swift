@@ -179,8 +179,8 @@ private struct Transcript: View {
         switch status {
         case .checking: "Looking for your Personal Voice…"
         case .unsupported: "This Mac can't offer a Personal Voice."
-        case .notDetermined: "CorpSpeak speaks in your own voice."
-        case .denied: "CorpSpeak isn't allowed to use your Personal Voice."
+        case .notDetermined: "Corpospeak speaks in your own voice."
+        case .denied: "Corpospeak isn't allowed to use your Personal Voice."
         case .noVoice: "You don't have a Personal Voice yet."
         case .ready: "Your voice is ready."
         }
@@ -191,13 +191,13 @@ private struct Transcript: View {
         case .checking:
             ""
         case .unsupported:
-            "CorpSpeak speaks only in your own voice, and macOS can't create one on this Mac."
+            "Corpospeak speaks only in your own voice, and macOS can't create one on this Mac."
         case .notDetermined:
-            "macOS clones it as a Personal Voice: System Settings → Accessibility → Personal Voice, ten phrases, about a minute. Then let CorpSpeak use it. Nothing you say leaves the Mac."
+            "macOS clones it as a Personal Voice: System Settings → Accessibility → Personal Voice, ten phrases, about a minute. Then let Corpospeak use it. Nothing you say leaves the Mac."
         case .denied:
             "In System Settings → Accessibility → Personal Voice, turn on “Allow Apps to Request to Use”, then try again."
         case .noVoice:
-            "Create one in System Settings → Accessibility → Personal Voice (ten phrases, about a minute). CorpSpeak will notice as soon as it's ready."
+            "Create one in System Settings → Accessibility → Personal Voice (ten phrases, about a minute). Corpospeak will notice as soon as it's ready."
         case .ready:
             ""
         }
@@ -295,7 +295,7 @@ private struct CopyButton: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut("c", modifiers: [.command, .shift])
-            .help("Copy the CorpSpeak text (⇧⌘C)")
+            .help("Copy the Corpospeak text (⇧⌘C)")
             .animation(.easeInOut(duration: 0.2), value: isCopied)
         }
         .fixedSize()
@@ -619,7 +619,7 @@ private struct VoiceMenu: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("The voice CorpSpeak speaks with")
+        .help("The voice Corpospeak speaks with")
     }
 
     private var label: String {
@@ -671,10 +671,10 @@ private struct VoiceHelp: View {
             Text("Voice")
                 .font(.headline)
 
-            Text("CorpSpeak speaks in **your voice**: the Personal Voice that macOS creates in System Settings → Accessibility → Personal Voice. Nothing you say leaves the Mac.")
+            Text("Corpospeak speaks in **your voice**: the Personal Voice that macOS creates in System Settings → Accessibility → Personal Voice. Nothing you say leaves the Mac.")
             Text(statusLine)
                 .foregroundStyle(.secondary)
-            Text("To change how it sounds, record a new Personal Voice in System Settings. You can withdraw CorpSpeak's access in the same place at any time.")
+            Text("To change how it sounds, record a new Personal Voice in System Settings. You can withdraw Corpospeak's access in the same place at any time.")
                 .foregroundStyle(.secondary)
 
             Divider()
@@ -693,8 +693,8 @@ private struct VoiceHelp: View {
         switch speaker.voiceStatus {
         case .checking: "Looking for your Personal Voice…"
         case .unsupported: "This Mac can't offer a Personal Voice, so nothing can be spoken."
-        case .notDetermined: "CorpSpeak hasn't asked to use your Personal Voice yet. Choose “Use my Personal Voice…” from the voice menu."
-        case .denied: "CorpSpeak isn't allowed to use your Personal Voice. Turn on “Allow Apps to Request to Use” in System Settings."
+        case .notDetermined: "Corpospeak hasn't asked to use your Personal Voice yet. Choose “Use my Personal Voice…” from the voice menu."
+        case .denied: "Corpospeak isn't allowed to use your Personal Voice. Turn on “Allow Apps to Request to Use” in System Settings."
         case .noVoice: "No Personal Voice has been created yet."
         case .ready(let name): "Speaking with “\(name)”."
         }

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>CorpSpeak</string>
+	<string>Corpospeak</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -29,8 +29,8 @@
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>CorpSpeak listens continuously so it can translate what you say.</string>
+	<string>Corpospeak listens continuously so it can translate what you say.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>CorpSpeak transcribes your speech on-device so it can translate it.</string>
+	<string>Corpospeak transcribes your speech on-device so it can translate it.</string>
 </dict>
 </plist>
