@@ -147,6 +147,12 @@ final class Speaker {
         }
     }
 
+    /// The voice with this identifier, if it is installed and usable right now.
+    private static func voice(identifier: String) -> AVSpeechSynthesisVoice? {
+        AVSpeechSynthesisVoice.speechVoices().first { $0.identifier == identifier }
+            ?? AVSpeechSynthesisVoice(identifier: identifier)
+    }
+
     /// The user's Personal Voices, if Corpospeak has been allowed to use them.
     private static func personalVoices() -> [AVSpeechSynthesisVoice] {
         AVSpeechSynthesisVoice.speechVoices().filter { $0.voiceTraits.contains(.isPersonalVoice) }
@@ -187,19 +193,32 @@ final class Speaker {
 
     // MARK: Speaking
 
-    /// Speaks with the selected voice. Returns false if nothing could be spoken because no voice
-    /// is available at all.
+    /// Speaks `text` with the selected voice, sentence by sentence. Returns false if nothing
+    /// could be spoken because no voice is available at all.
     @discardableResult
     func speak(_ text: String) async -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return true }
-        guard let selectedVoiceID, let voice = AVSpeechSynthesisVoice(identifier: selectedVoiceID) else { return false }
+        let (stream, feed) = AsyncStream<String>.makeStream()
+        for sentence in Self.split(text) { feed.yield(sentence) }
+        feed.finish()
+        return await speak(stream)
+    }
+
+    /// Speaks sentences as they arrive, so playback can start while the rest of the text is
+    /// still being written. Returns once the last sentence has been spoken, or false straight
+    /// away if no voice is available at all.
+    @discardableResult
+    func speak(_ sentences: AsyncStream<String>) async -> Bool {
+        // If the chosen voice can't be loaded right now (a Personal Voice whose access was
+        // withdrawn, say), speak with the system's default rather than saying nothing.
+        guard let voice = selectedVoiceID.flatMap(Self.voice(identifier:)) ?? Self.defaultSystemVoice() else { return false }
 
         stop()
         generation += 1
         let thisGeneration = generation
         isSpeaking = true
-        sentences = Self.split(text)
+        self.sentences = []
         currentSentence = nil
         defer {
             if generation == thisGeneration {
@@ -208,34 +227,42 @@ final class Speaker {
             }
         }
 
-        let utterances = sentences.map { sentence in
-            let utterance = AVSpeechUtterance(string: sentence)
-            utterance.voice = voice
-            utterance.prefersAssistiveTechnologySettings = false
-            return utterance
-        }
-        let ids = utterances.map(ObjectIdentifier.init)
-
+        let playback = Playback()
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             let done = Resumer(continuation)
             finishCurrent = done
             events.onStart = { [weak self] id in
-                guard let self, self.generation == thisGeneration, let index = ids.firstIndex(of: id) else { return }
+                guard let self, self.generation == thisGeneration, let index = playback.ids.firstIndex(of: id) else { return }
                 self.currentSentence = index
             }
-            events.onFinish = { [weak self] id in
-                guard let self, self.generation == thisGeneration, id == ids.last else { return }
-                done.resume()
+            events.onFinish = { [weak self] _ in
+                guard let self, self.generation == thisGeneration else { return }
+                playback.finished += 1
+                if playback.isComplete { done.resume() }
             }
             events.onCancel = { [weak self] _ in
                 guard let self, self.generation == thisGeneration else { return }
                 done.resume()
             }
-            for utterance in utterances {
-                synthesizer.speak(utterance)
+            // Queue each sentence the moment it arrives. The synthesizer plays them back to back,
+            // and picks up again if it ran dry while waiting for the next one.
+            Task { @MainActor [weak self] in
+                for await sentence in sentences {
+                    guard let self, self.generation == thisGeneration else { return }
+                    let utterance = AVSpeechUtterance(string: sentence)
+                    utterance.voice = voice
+                    utterance.prefersAssistiveTechnologySettings = false
+                    self.sentences.append(sentence)
+                    playback.utterances.append(utterance)
+                    playback.ids.append(ObjectIdentifier(utterance))
+                    self.synthesizer.speak(utterance)
+                }
+                guard let self, self.generation == thisGeneration else { return }
+                playback.ended = true
+                // Nothing to wait for if no sentence ever came, or the last one already played.
+                if playback.isComplete { done.resume() }
             }
         }
-        withExtendedLifetime(utterances) {}
         return true
     }
 
@@ -250,7 +277,7 @@ final class Speaker {
     }
 
     /// Splits text into sentences, keeping punctuation. Falls back to the whole text.
-    static func split(_ text: String) -> [String] {
+    nonisolated static func split(_ text: String) -> [String] {
         let tokenizer = NLTokenizer(unit: .sentence)
         tokenizer.string = text
         var result: [String] = []
@@ -261,6 +288,19 @@ final class Speaker {
         }
         return result.isEmpty ? [text] : result
     }
+}
+
+/// The utterances queued by one `speak` call, kept alive until it returns, and how far through
+/// them playback has got.
+@MainActor
+private final class Playback {
+    var utterances: [AVSpeechUtterance] = []
+    var ids: [ObjectIdentifier] = []
+    var finished = 0
+    /// True once the last sentence has been queued.
+    var ended = false
+
+    var isComplete: Bool { ended && finished == ids.count }
 }
 
 /// Forwards synthesizer callbacks, which may arrive on any thread, to the main actor as

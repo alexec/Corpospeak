@@ -63,15 +63,20 @@ SpeechListener → CorpospeakModel → Translator → CorpospeakModel → Speake
   reports `.unavailable` rather than ever sending audio off-device.
 - **`Corpospeak/Services/Translator.swift`** — one fresh `LanguageModelSession` per utterance
   (so rewrites don't carry context between sentences), built from the instructions/glossary in
-  `CorpospeakStyle.swift`. `checkAvailability()` reflects `SystemLanguageModel.default.availability`
+  `CorpospeakStyle.swift`. Latency matters: the next session is `prewarm`ed while the app is
+  idle so the instructions are already read when the user stops talking, and `translate`
+  streams the reply so the first sentence is spoken while the rest is generated. Don't try to
+  speed it up by trimming the instructions: on 2026-09-05, cutting the phrasebook to bare phrases
+  (or the rules to a few lines) made the model copy example content, add preambles, and run on,
+  in side-by-side runs against the full prompt. The prewarm hides the prompt's cost instead. `checkAvailability()` reflects `SystemLanguageModel.default.availability`
   so the UI can explain *why* (device ineligible, Apple Intelligence off, model still downloading)
   rather than just failing.
 - **`Corpospeak/Services/Speaker.swift`** — speaks with a system voice by default (so it works
   in the Simulator, which can't create a Personal Voice) and offers every installed voice plus
   the user's own Personal Voice, once authorized, through a `voices: [VoiceOption]` list. The
   selected voice's identifier persists in `UserDefaults` across launches. Splits text into
-  sentences (`NLTokenizer`) and reports which sentence is currently playing so the UI can
-  highlight it.
+  sentences (`NLTokenizer`), accepts them as a stream so speech can start before the reply is
+  finished, and reports which sentence is currently playing so the UI can highlight it.
 - **`Corpospeak/CorpospeakModel.swift`** — the only thing that talks to all three services. Owns
   a `Phase` enum the UI renders from (`starting`/`listening`/`muted`/`translating`/`speaking`/
   `error`), a small pending-utterance queue (so an utterance heard while still speaking isn't
@@ -80,7 +85,16 @@ SpeechListener → CorpospeakModel → Translator → CorpospeakModel → Speake
 - **`Corpospeak/CorpospeakStyle.swift`** — pure data: the Corpospeak glossary (phrase ↔ meaning,
   by chapter) and the prompt text built from it for both translation directions. This is the
   file to touch when changing the app's *voice* (the writing style, not the audio voice) rather
-  than its mechanics.
+  than its mechanics. After any prompt change, run `scripts/eval_prompt.sh` (needs Apple
+  Intelligence on this Mac): it scores how many of the speaker's facts survive, whether example
+  text gets pasted into replies, and runaway length. Two things it has already caught: the
+  few-shot examples must not be about work (the model pastes work examples into work
+  sentences), and the prompt must not contain a list of jargon words (the model sometimes
+  replies with the list). The on-device model differs between OS versions: the iOS 27 beta's
+  guardrail refuses the prompt whenever the few-shot examples aren't about work, so
+  `shortExamples` picks a set by OS version. The Mac harness only measures the Mac's model; to
+  measure on a phone, build a throwaway app that runs the prompt and prints to stderr, and read
+  it with `xcrun devicectl device process launch --console` (the phone must stay unlocked).
 - **`Corpospeak/Views/ContentView.swift`** — the single window; `compact` (screen width < 600)
   tightens spacing/type for phones and narrow iPad splits.
 - **`Corpospeak/Platform.swift`** — the few things that differ between macOS/iOS/iPadOS (the

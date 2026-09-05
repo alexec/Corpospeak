@@ -64,7 +64,7 @@ scripts/check_apple_intelligence_eligible.py <device-id>    # exits 1 if that de
 | --- | --- |
 | `Corpospeak/Services/SpeechListener.swift` | Always-on microphone → `SFSpeechRecognizer`. Emits one utterance per pause in speech. |
 | `Corpospeak/Services/Translator.swift` | Sends an utterance to the on-device `LanguageModelSession` and returns the rewrite. |
-| `Corpospeak/Services/Speaker.swift` | Reads text aloud one sentence at a time with the chosen voice (system, or the user's Personal Voice) and reports which sentence is playing. |
+| `Corpospeak/Services/Speaker.swift` | Reads text aloud one sentence at a time with the chosen voice (system, or the user's Personal Voice), starting as soon as the first sentence is written, and reports which sentence is playing. |
 | `Corpospeak/CorpospeakStyle.swift` | The Corpospeak glossary and prompt, taken from [The Corpospeak Field Guide](https://claude.ai/code/artifact/0a819392-f474-464f-8815-0073bd7845e9). |
 | `Corpospeak/CorpospeakModel.swift` | Wires the three services together: listen → translate → speak → listen. |
 | `Corpospeak/Views/ContentView.swift` | The single window. Tightens its spacing and type on narrow screens. |
