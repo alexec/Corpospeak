@@ -21,6 +21,8 @@ targets:
       path: CorpSpeak/Info.plist
       properties:
         CFBundleDisplayName: CorpSpeak
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationCategoryType: public.app-category.entertainment
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSMicrophoneUsageDescription: CorpSpeak listens continuously so it can translate what you say.
         NSSpeechRecognitionUsageDescription: CorpSpeak transcribes your speech on-device so it can translate it.
