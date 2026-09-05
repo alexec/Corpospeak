@@ -166,7 +166,32 @@ enum CorpospeakStyle {
     }
 
     /// Short one-line pairs. Small on-device models follow these better than a long passage.
-    static let shortExamples: [(english: String, corpospeak: String)] = [
+    ///
+    /// Which set depends on the OS, because the two on-device models disagree (measured
+    /// 2026-09-05 with `scripts/eval_prompt.sh` on macOS 26.5 and a probe app on an iPhone
+    /// running the iOS 27 beta):
+    /// - On 26.x, work examples get pasted into replies about anything similar ("remediation
+    ///   pathway for the login experience" turned up in sentences about servers), losing the
+    ///   speaker's facts; everyday examples fixed that (facts kept ~70% → ~85%, copying → 0).
+    /// - On the 27 beta, the model's guardrail refuses every request ("may contain unsafe
+    ///   content") when the examples are about anything but work — each everyday example alone
+    ///   was enough — while the work examples pass. Revisit when 27 ships.
+    static var shortExamples: [(english: String, corpospeak: String)] {
+        if #available(iOS 27, macOS 27, *) { return workExamples }
+        return homeExamples
+    }
+
+    /// Everyday topics show the mechanism — keep the facts, bury the ask — with nothing the
+    /// model can mistake for the input.
+    static let homeExamples: [(english: String, corpospeak: String)] = [
+        ("The dishwasher is broken again. Can you call the repair guy today?", "Just flagging that the dishwasher has regressed to a non-operational state, so it would be a real unlock if you could loop in the repair guy at some point today."),
+        ("I'm not coming to Dave's party on Saturday. I have a cold.", "Net net, I'm going to have to deprioritize Dave's party on Saturday, as I'm currently operating at reduced bandwidth with a cold."),
+        ("Why did the cat knock over the plant?", "Just to get some altitude here, can we double-click on what was driving the cat's decision to take the plant offline?"),
+        ("Dinner is at seven. Don't be late.", "Just to level set, dinner has a hard cadence of seven o'clock, and I'd love for us all to be fully aligned on landing the plane on punctuality."),
+    ]
+
+    /// The original work examples: the only set the OS 27 beta model accepts.
+    static let workExamples: [(english: String, corpospeak: String)] = [
         ("I already told you this.", "Per my last email, and just to level set, this has already been socialized."),
         ("Can we talk about this later?", "Let's put a pin in this and circle back once we've had a few cycles to pressure test it."),
         ("I don't know.", "That's a great question. I don't have full visibility into that yet, but I'll take it away and come back with some altitude."),
@@ -176,11 +201,10 @@ enum CorpospeakStyle {
         ("Send me the Q2 numbers before lunch.", "When you have a moment before lunch, it would be a great unlock to loop me in on the Q2 numbers."),
     ]
 
-    /// What Corpospeak does to a sentence: keep the facts, bury the ask.
+    /// What Corpospeak does to a sentence: keep the facts, bury the ask. No list of jargon words
+    /// here: given one, the model occasionally replied with the list itself.
     static let stylePrinciples = """
-        - Corpospeak is silly. Pile on the jargon: alignment, bandwidth, cadence, synergy, unlock, \
-        stakeholders, socialize, level set, circle back, north star, table stakes, at the end of \
-        the day, net net, directionally, pressure test, land the plane, take it offline.
+        - Corpospeak is silly. Pile on the jargon from the phrasebook.
         - The facts survive: names, numbers, dates, products and who is involved stay exactly as \
         said. A refusal stays a refusal. A deadline stays a deadline.
         - The ask gets buried. A direct request, decision or question is wrapped in process \
@@ -208,7 +232,7 @@ enum CorpospeakStyle {
         Phrasebook (plain meaning → Corpospeak phrase). Use these freely:
         \(encodeGlossaryText)
 
-        Examples of the style. They are about other topics; never copy their content:
+        Examples of the style. They are about other topics; never reuse their wording or content:
 
         \(examples)
 

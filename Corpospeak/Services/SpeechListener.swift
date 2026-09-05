@@ -40,8 +40,9 @@ final class SpeechListener {
     /// Microphone loudness, 0…1, smoothed. Updated ~30 times a second while the mic is open.
     private(set) var audioLevel: Float = 0
 
-    /// How long the speaker must be quiet before the utterance is treated as finished.
-    var silenceInterval: TimeInterval = 2.0
+    /// How long the speaker must be quiet before the utterance is treated as finished. Long
+    /// enough for a breath mid-sentence, short enough not to feel like waiting.
+    var silenceInterval: TimeInterval = 1.4
 
     /// When the current utterance will be treated as finished if nothing more is heard.
     /// Nil while nothing has been heard yet.

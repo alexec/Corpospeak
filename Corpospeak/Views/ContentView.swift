@@ -124,7 +124,7 @@ private struct Transcript: View {
                             }
                             .frame(maxWidth: 720, alignment: .leading)
                             .animation(.easeInOut(duration: 0.3), value: current)
-                            .id(model.translated)
+                            .id(model.replyID)
 
                             CopyButton(text: model.translated)
                                 .padding(.top, 2)
@@ -147,7 +147,7 @@ private struct Transcript: View {
                     startPoint: .top, endPoint: .bottom
                 )
             )
-            .onChange(of: model.translated) {
+            .onChange(of: model.replyID) {
                 withAnimation(.easeOut(duration: 0.4)) { proxy.scrollTo(Anchor.top, anchor: .top) }
             }
             .onChange(of: current) {
@@ -180,13 +180,14 @@ private struct Transcript: View {
         .animation(.easeInOut(duration: 0.3), value: model.canImprovePersonalVoice)
     }
 
-    /// The speaker's own sentence split while speaking, otherwise the same split of the text.
+    /// While speaking, the speaker's own sentences lead (so the highlight lines up with
+    /// playback), followed by whatever the model has written since; otherwise the finished text.
     private var displayedSentences: [String] {
         guard !model.translated.isEmpty else { return [] }
-        if model.speaker.isSpeaking, !model.speaker.sentences.isEmpty {
-            return model.speaker.sentences
-        }
-        return Speaker.split(model.translated)
+        let written = Speaker.split(model.translated)
+        guard model.speaker.isSpeaking else { return written }
+        let queued = model.speaker.sentences
+        return queued + written.dropFirst(queued.count)
     }
 
     private var isLive: Bool {
