@@ -566,7 +566,10 @@ private struct StatusPill: View {
     private var dot: some View {
         let isCountingDown = silenceDeadline != nil && phase == .listening
         return TimelineView(.animation(paused: !isCountingDown)) { context in
-            let remaining = isCountingDown ? max(0, silenceDeadline!.timeIntervalSince(context.date)) : 0
+            // Read the deadline afresh on every tick: the listener clears it the moment an
+            // utterance is sent, and a tick can land after that while the captured
+            // `isCountingDown` is still true.
+            let remaining = silenceDeadline.map { max(0, $0.timeIntervalSince(context.date)) } ?? 0
             let fraction = isCountingDown && silenceInterval > 0 ? remaining / silenceInterval : 0
             ZStack {
                 Circle()
