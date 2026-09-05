@@ -21,6 +21,8 @@ targets:
       path: CorpSpeak/Info.plist
       properties:
         CFBundleDisplayName: Corpospeak
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "2"
         ITSAppUsesNonExemptEncryption: false
         LSApplicationCategoryType: public.app-category.entertainment
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
