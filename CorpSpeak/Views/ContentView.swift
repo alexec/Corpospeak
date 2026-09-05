@@ -99,6 +99,9 @@ private struct Transcript: View {
                             .frame(maxWidth: 720, alignment: .leading)
                             .animation(.easeInOut(duration: 0.3), value: current)
                             .id(model.translated)
+
+                            CopyButton(text: model.translated)
+                                .padding(.top, 2)
                         }
                     }
 
@@ -193,6 +196,46 @@ private struct SectionLabel: View {
             .font(Type.label)
             .tracking(3)
             .foregroundStyle(.white.opacity(0.38))
+    }
+}
+
+// MARK: - Copy
+
+/// Puts the reply on the clipboard. ⌘⇧C does the same.
+private struct CopyButton: View {
+    let text: String
+    @State private var copiedAt: Date?
+
+    private var isCopied: Bool {
+        copiedAt.map { Date().timeIntervalSince($0) < 1.6 } ?? false
+    }
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.4)) { _ in
+            Button {
+                let pasteboard = NSPasteboard.general
+                pasteboard.clearContents()
+                pasteboard.setString(text, forType: .string)
+                copiedAt = Date()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+                    Text(isCopied ? "Copied" : "Copy")
+                }
+                .font(Type.control)
+                .foregroundStyle(isCopied ? Color.green : .white.opacity(0.55))
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
+                .background(.white.opacity(0.05), in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(0.07)))
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+            .help("Copy the CorpSpeak text (⇧⌘C)")
+            .animation(.easeInOut(duration: 0.2), value: isCopied)
+        }
+        .fixedSize()
     }
 }
 
