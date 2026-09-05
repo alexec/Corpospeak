@@ -1,24 +1,27 @@
-name: CorpSpeak
+name: Corpospeak
 options:
   bundleIdPrefix: com.alexcollins
   deploymentTarget:
     macOS: "26.0"
+    iOS: "26.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 settings:
   base:
     SWIFT_VERSION: "5.0"
     MACOSX_DEPLOYMENT_TARGET: "26.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     ALWAYS_SEARCH_USER_PATHS: NO
 targets:
-  CorpSpeak:
+  Corpospeak:
     type: application
-    platform: macOS
+    # One target, three destinations: Mac, iPhone, and iPad.
+    supportedDestinations: [macOS, iOS]
     sources:
-      - CorpSpeak
+      - Corpospeak
     info:
-      path: CorpSpeak/Info.plist
+      path: Corpospeak/Info.plist
       properties:
         CFBundleDisplayName: Corpospeak
         CFBundleShortVersionString: "1.0"
@@ -29,20 +32,38 @@ targets:
         NSMicrophoneUsageDescription: Corpospeak listens continuously so it can translate what you say.
         NSSpeechRecognitionUsageDescription: Corpospeak transcribes your speech on-device so it can translate it.
         NSHumanReadableCopyright: ""
+        # iOS and iPadOS
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIUserInterfaceStyle: Dark
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     entitlements:
-      path: CorpSpeak/CorpSpeak.entitlements
+      path: Corpospeak/Corpospeak.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.device.audio-input: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.alexcollins.CorpSpeak
+        PRODUCT_BUNDLE_IDENTIFIER: com.alexcollins.CorpSpeak # The App Store identity; must never change.
         PRODUCT_NAME: Corpospeak
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
         DEVELOPMENT_TEAM: 6T4RVD5724
+        # The sandbox entitlements above are for the Mac; iOS gets none.
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": Corpospeak/Corpospeak-iOS.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Corpospeak/Corpospeak-iOS.entitlements
         ENABLE_HARDENED_RUNTIME: true
         GENERATE_INFOPLIST_FILE: false
         SWIFT_EMIT_LOC_STRINGS: true
         ENABLE_PREVIEWS: true
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx"

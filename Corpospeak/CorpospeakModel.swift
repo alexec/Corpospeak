@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import Observation
 
@@ -6,7 +5,7 @@ import Observation
 /// Until the user's Personal Voice is available, it holds in a setup step instead.
 @MainActor
 @Observable
-final class CorpSpeakModel {
+final class CorpospeakModel {
     enum Phase: Equatable {
         case starting
         case setup
@@ -25,7 +24,7 @@ final class CorpSpeakModel {
 
     /// The last thing the user said.
     private(set) var heard = ""
-    /// Its CorpSpeak rendering.
+    /// Its Corpospeak rendering.
     private(set) var translated = ""
 
     private enum Job {
@@ -37,9 +36,6 @@ final class CorpSpeakModel {
     private var isSettingUp = false
     /// Bumped by `stopSpeaking` so a translation in flight is discarded instead of spoken.
     private var cancelGeneration = 0
-
-    /// Where macOS creates and manages the Personal Voice.
-    private static let voiceSettingsURL = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension?PersonalVoice")!
 
     var isMuted: Bool { listener.isMuted }
 
@@ -90,14 +86,19 @@ final class CorpSpeakModel {
 
     // MARK: Voice setup
 
-    /// Asks macOS to let CorpSpeak use the Personal Voice.
+    /// Asks macOS to let Corpospeak use the Personal Voice.
     func authorizeVoice() async {
         await speaker.requestAuthorization()
     }
 
-    /// Opens System Settings at Accessibility → Personal Voice.
+    /// Opens the settings app as near to Accessibility → Personal Voice as the platform allows.
     func openVoiceSettings() {
-        NSWorkspace.shared.open(Self.voiceSettingsURL)
+        Platform.openVoiceSettings()
+    }
+
+    /// Restarts the microphone if the system stopped it while the app was away.
+    func resumeAfterInterruption() {
+        listener.recover()
     }
 
     /// Holds the pipeline until a Personal Voice is available. Listening pauses meanwhile.

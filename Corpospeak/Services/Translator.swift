@@ -25,7 +25,7 @@ final class Translator {
 
     func translate(_ text: String) async throws -> String {
         // A fresh session per utterance keeps each rewrite independent of the last.
-        let session = LanguageModelSession(instructions: CorpSpeakStyle.englishToCorpSpeakInstructions)
+        let session = LanguageModelSession(instructions: CorpospeakStyle.englishToCorpospeakInstructions)
         let prompt = """
             Rewrite the text between the markers. Reply with the rewritten text only.
 
