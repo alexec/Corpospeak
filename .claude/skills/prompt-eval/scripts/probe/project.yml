@@ -1,0 +1,19 @@
+name: Probe
+options:
+  bundleIdPrefix: com.alexcollins
+  deploymentTarget:
+    iOS: "26.0"
+targets:
+  Probe:
+    type: application
+    platform: iOS
+    sources: [Probe]
+    settings:
+      base:
+        PRODUCT_NAME: Probe
+        PRODUCT_BUNDLE_IDENTIFIER: com.alexcollins.CorpSpeak.probe
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: __TEAM__
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        SWIFT_VERSION: "5.0"
