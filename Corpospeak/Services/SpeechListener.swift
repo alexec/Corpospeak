@@ -59,6 +59,7 @@ final class SpeechListener {
     private var generation = 0
     private var wantsListening = false
     private var isPaused = false
+    private var engineObservers: [Task<Void, Never>] = []
 
     // MARK: Lifecycle
 
@@ -67,11 +68,11 @@ final class SpeechListener {
         guard !wantsListening else { return }
 
         guard await requestSpeechAuthorization() == .authorized else {
-            status = .unavailable("Speech Recognition permission was not granted. Enable it in System Settings → Privacy & Security.")
+            status = .unavailable("Speech Recognition permission was not granted. Enable it in \(Platform.settings) → Privacy & Security.")
             return
         }
         guard await AVCaptureDevice.requestAccess(for: .audio) else {
-            status = .unavailable("Microphone permission was not granted. Enable it in System Settings → Privacy & Security.")
+            status = .unavailable("Microphone permission was not granted. Enable it in \(Platform.settings) → Privacy & Security.")
             return
         }
         guard let recognizer = SFSpeechRecognizer(locale: .current) ?? SFSpeechRecognizer(),
@@ -80,15 +81,16 @@ final class SpeechListener {
             status = .unavailable("No speech recogniser is available for this locale.")
             return
         }
-        // Corpospeak never uses the network, so recognition must happen on the Mac. The
-        // sandbox has no network entitlement, and the privacy policy promises as much.
+        // Corpospeak never uses the network, so recognition must happen on the device. The
+        // Mac sandbox has no network entitlement, and the privacy policy promises as much.
         guard recognizer.supportsOnDeviceRecognition else {
-            status = .unavailable("On-device speech recognition isn't available for your language. Add it in System Settings → Keyboard → Dictation.")
+            status = .unavailable("On-device speech recognition isn't available for your language on this \(Platform.device).")
             return
         }
         self.recognizer = recognizer
 
         do {
+            try AudioSession.activate()
             try startAudioEngine()
         } catch {
             status = .unavailable("Could not start the microphone: \(error.localizedDescription)")
@@ -99,6 +101,24 @@ final class SpeechListener {
         isPaused = false
         beginRecognition()
         startLevelMonitor()
+        observeEngine()
+    }
+
+    /// Reopens the microphone if the system closed it: the app came back to the foreground,
+    /// a phone call ended, or the input device changed. Recognition starts afresh, since the
+    /// task in flight was starved of audio meanwhile.
+    func recover() {
+        guard wantsListening, !audioEngine.isRunning else { return }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        do {
+            try AudioSession.activate()
+            try startAudioEngine()
+        } catch {
+            status = .unavailable("Could not restart the microphone: \(error.localizedDescription)")
+            return
+        }
+        if case .unavailable = status { status = .paused }
+        if !isPaused, !isMuted { beginRecognition() }
     }
 
     func stop() {
@@ -162,6 +182,26 @@ final class SpeechListener {
         }
         audioEngine.prepare()
         try audioEngine.start()
+    }
+
+    /// The engine stops itself when the audio route or device changes, and iOS pauses it for
+    /// interruptions such as phone calls. Both are recoverable.
+    private func observeEngine() {
+        guard engineObservers.isEmpty else { return }
+        let center = NotificationCenter.default
+        engineObservers.append(Task { [weak self] in
+            for await _ in center.notifications(named: .AVAudioEngineConfigurationChange, object: self?.audioEngine) {
+                self?.recover()
+            }
+        })
+        #if os(iOS)
+        engineObservers.append(Task { [weak self] in
+            for await note in center.notifications(named: AVAudioSession.interruptionNotification) {
+                let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+                if raw.flatMap(AVAudioSession.InterruptionType.init) == .ended { self?.recover() }
+            }
+        })
+        #endif
     }
 
     private func startLevelMonitor() {

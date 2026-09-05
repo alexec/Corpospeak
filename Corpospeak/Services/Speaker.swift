@@ -6,9 +6,9 @@ import Observation
 /// Reads text aloud in the user's own voice, one sentence at a time, and reports which
 /// sentence is playing.
 ///
-/// The voice is the user's Personal Voice, which macOS creates in System Settings →
+/// The voice is the user's Personal Voice, which the system creates in Settings →
 /// Accessibility → Personal Voice and hands to apps through `AVSpeechSynthesizer` once the
-/// user allows it. There is no other voice: until the user has one and has let CorpSpeak use
+/// user allows it. There is no other voice: until the user has one and has let Corpospeak use
 /// it, nothing is spoken.
 @MainActor
 @Observable
@@ -16,9 +16,9 @@ final class Speaker {
     enum VoiceStatus: Equatable {
         /// Not looked yet.
         case checking
-        /// This Mac cannot offer a Personal Voice.
+        /// This device cannot offer a Personal Voice.
         case unsupported
-        /// CorpSpeak has not asked to use the Personal Voice yet.
+        /// Corpospeak has not asked to use the Personal Voice yet.
         case notDetermined
         /// The user said no, or "Allow Apps to Request to Use" is off.
         case denied
@@ -50,7 +50,7 @@ final class Speaker {
         synthesizer.delegate = events
     }
 
-    /// True once a Personal Voice is available and CorpSpeak may use it.
+    /// True once a Personal Voice is available and Corpospeak may use it.
     var isReady: Bool { voice != nil }
 
     // MARK: Voice
@@ -68,8 +68,8 @@ final class Speaker {
         }
     }
 
-    /// Asks macOS for permission to use the Personal Voice. The first time, macOS shows its own
-    /// prompt; after that it answers from the user's earlier choice.
+    /// Asks the system for permission to use the Personal Voice. The first time, it shows its
+    /// own prompt; after that it answers from the user's earlier choice.
     func requestAuthorization() async {
         _ = await withCheckedContinuation { (continuation: CheckedContinuation<AVSpeechSynthesizer.PersonalVoiceAuthorizationStatus, Never>) in
             AVSpeechSynthesizer.requestPersonalVoiceAuthorization { continuation.resume(returning: $0) }

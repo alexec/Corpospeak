@@ -1,4 +1,4 @@
-# Releasing to the Mac App Store
+# Releasing to the App Store
 
 The App Store record is **Corpospeak: In Your Voice** (bundle ID `com.alexcollins.CorpSpeak`,
 which must never change, SKU `corpspeak`). Everything below runs from a terminal; Xcode's
@@ -7,7 +7,7 @@ signed-in Apple ID handles authentication.
 ## 1. Bump the build number
 
 Every upload needs a new `CFBundleVersion`. Edit it in `project.yml` (xcodegen writes it into
-`CorpSpeak/Info.plist`, which is committed so the two must stay in sync), then regenerate:
+`Corpospeak/Info.plist`, which is committed so the two must stay in sync), then regenerate:
 
 ```bash
 xcodegen generate
@@ -18,8 +18,17 @@ Bump `CFBundleShortVersionString` too when the version shown on the store should
 ## 2. Archive
 
 ```bash
-xcodebuild -project CorpSpeak.xcodeproj -scheme CorpSpeak -configuration Release \
+xcodebuild -project Corpospeak.xcodeproj -scheme Corpospeak -configuration Release \
   -destination 'generic/platform=macOS' -archivePath build/Corpospeak.xcarchive \
+  -allowProvisioningUpdates archive
+```
+
+The iPhone and iPad build is the same target archived for iOS. It shares the bundle ID, so it
+joins the same App Store record as a second platform:
+
+```bash
+xcodebuild -project Corpospeak.xcodeproj -scheme Corpospeak -configuration Release \
+  -destination 'generic/platform=iOS' -archivePath build/Corpospeak-iOS.xcarchive \
   -allowProvisioningUpdates archive
 ```
 
@@ -32,6 +41,8 @@ signing:
 xcodebuild -exportArchive -archivePath build/Corpospeak.xcarchive \
   -exportOptionsPlist ExportOptions.plist -exportPath build/export -allowProvisioningUpdates
 ```
+
+Repeat with `build/Corpospeak-iOS.xcarchive` for the iOS build.
 
 The build appears under the app's TestFlight/Builds tab a few minutes later, after Apple's
 processing. Select it on the version page and submit.

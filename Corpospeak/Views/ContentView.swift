@@ -1,54 +1,82 @@
 import SwiftUI
 
 struct ContentView: View {
-    let model: CorpSpeakModel
+    let model: CorpospeakModel
+    @State private var width: CGFloat = 720
 
     var body: some View {
+        // Phones, and iPads in a narrow split, get tighter spacing and smaller type.
+        let compact = width < 600
         ZStack {
             Backdrop(phase: model.phase, level: model.listener.audioLevel)
+                .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .center, spacing: 8) {
                     StatusPill(model: model)
                     MuteButton(model: model)
                     Spacer()
-                    VoiceMenu(model: model)
+                    VoiceMenu(model: model, compact: compact)
                     VoiceHelpButton(model: model)
                 }
                 .padding(.top, 8)
 
-                Transcript(model: model)
+                Transcript(model: model, compact: compact)
                     .padding(.top, 16)
             }
-            .padding(.horizontal, 36)
-            .padding(.vertical, 28)
+            .padding(.horizontal, compact ? 20 : 36)
+            .padding(.vertical, compact ? 12 : 28)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(.white.opacity(0.07))
-        )
-        .gesture(WindowDragGesture())
-        .ignoresSafeArea()
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .windowChrome()
         .preferredColorScheme(.dark)
+    }
+}
+
+private extension View {
+    /// On the Mac the window is a borderless rounded card that can be dragged from anywhere.
+    /// On iPhone and iPad the app fills the screen and the system draws the edges.
+    @ViewBuilder
+    func windowChrome() -> some View {
+        #if os(macOS)
+        self
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(.white.opacity(0.07))
+            )
+            .gesture(WindowDragGesture())
+            .ignoresSafeArea()
+        #else
+        self
+        #endif
     }
 }
 
 // MARK: - Type scale
 
-private enum Type {
+private struct Type {
     static let label = Font.system(size: 10, weight: .semibold, design: .rounded)
-    static let heard = Font.system(size: 21, weight: .regular, design: .rounded)
-    static let reply = Font.system(size: 34, weight: .medium, design: .serif)
     static let control = Font.system(size: 12, weight: .medium, design: .rounded)
+
+    /// Smaller sizes for narrow screens.
+    let compact: Bool
+
+    var heard: Font { .system(size: compact ? 17 : 21, weight: .regular, design: .rounded) }
+    var reply: Font { .system(size: compact ? 26 : 34, weight: .medium, design: .serif) }
+    var title: Font { .system(size: compact ? 24 : 30, weight: .medium, design: .serif) }
+    var prompt: Font { .system(size: compact ? 24 : 30, weight: .regular, design: .serif) }
 }
 
 // MARK: - Transcript
 
-/// What was heard and what CorpSpeak made of it. While speaking, the current sentence is lit
+/// What was heard and what Corpospeak made of it. While speaking, the current sentence is lit
 /// and scrolled into view, teleprompter style.
 private struct Transcript: View {
-    let model: CorpSpeakModel
+    let model: CorpospeakModel
+    let compact: Bool
+
+    private var type: Type { Type(compact: compact) }
 
     private enum Anchor: Hashable {
         case top
@@ -75,7 +103,7 @@ private struct Transcript: View {
                         if !heard.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
                                 SectionLabel(isLive ? "HEARING" : "YOU SAID")
-                                WordFlow(text: heard, font: Type.heard, opacity: isLive ? 0.55 : 0.72, italic: isLive)
+                                WordFlow(text: heard, font: type.heard, opacity: isLive ? 0.55 : 0.72, italic: isLive)
                             }
                         }
 
@@ -83,7 +111,7 @@ private struct Transcript: View {
                             VStack(alignment: .leading, spacing: 10) {
                                 ForEach(Array(sentences.enumerated()), id: \.offset) { index, sentence in
                                     Text(sentence)
-                                        .font(Type.reply)
+                                        .font(type.reply)
                                         .foregroundStyle(.white)
                                         .opacity(current == nil || current == index ? 1 : 0.32)
                                         .textSelection(.enabled)
@@ -140,7 +168,7 @@ private struct Transcript: View {
                 .frame(height: 56)
             // Only invite the user to talk once the app is actually listening.
             Text("Say something in plain English.")
-                .font(.system(size: 30, weight: .regular, design: .serif))
+                .font(type.prompt)
                 .foregroundStyle(.white.opacity(0.3))
                 .opacity(isReadyToListen ? 1 : 0)
         }
@@ -150,9 +178,9 @@ private struct Transcript: View {
     private var setup: some View {
         let status = model.speaker.voiceStatus
         return VStack(alignment: .leading, spacing: 14) {
-            SectionLabel("FIRST, CORPSPEAK NEEDS YOUR VOICE")
+            SectionLabel("FIRST, CORPOSPEAK NEEDS YOUR VOICE")
             Text(setupTitle(for: status))
-                .font(.system(size: 30, weight: .medium, design: .serif))
+                .font(type.title)
                 .foregroundStyle(.white)
                 .lineSpacing(4)
             Text(setupDetail(for: status))
@@ -160,13 +188,10 @@ private struct Transcript: View {
                 .foregroundStyle(.white.opacity(0.55))
                 .lineSpacing(3)
             if status != .unsupported {
-                HStack(spacing: 10) {
-                    SetupButton("Use my Personal Voice", systemImage: "person.wave.2", prominent: true) {
-                        Task { await model.authorizeVoice() }
-                    }
-                    SetupButton("Open System Settings", systemImage: "gear", prominent: false) {
-                        model.openVoiceSettings()
-                    }
+                // Side by side where there is room, otherwise stacked.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) { setupButtons }
+                    VStack(alignment: .leading, spacing: 10) { setupButtons }
                 }
                 .padding(.top, 6)
             }
@@ -175,10 +200,20 @@ private struct Transcript: View {
         .transition(.opacity)
     }
 
+    @ViewBuilder
+    private var setupButtons: some View {
+        SetupButton("Use my Personal Voice", systemImage: "person.wave.2", prominent: true) {
+            Task { await model.authorizeVoice() }
+        }
+        SetupButton("Open \(Platform.settings)", systemImage: "gear", prominent: false) {
+            model.openVoiceSettings()
+        }
+    }
+
     private func setupTitle(for status: Speaker.VoiceStatus) -> String {
         switch status {
         case .checking: "Looking for your Personal Voice…"
-        case .unsupported: "This Mac can't offer a Personal Voice."
+        case .unsupported: "This \(Platform.device) can't offer a Personal Voice."
         case .notDetermined: "Corpospeak speaks in your own voice."
         case .denied: "Corpospeak isn't allowed to use your Personal Voice."
         case .noVoice: "You don't have a Personal Voice yet."
@@ -191,13 +226,13 @@ private struct Transcript: View {
         case .checking:
             ""
         case .unsupported:
-            "Corpospeak speaks only in your own voice, and macOS can't create one on this Mac."
+            "Corpospeak speaks only in your own voice, and \(Platform.os) can't create one on this \(Platform.device)."
         case .notDetermined:
-            "macOS clones it as a Personal Voice: System Settings → Accessibility → Personal Voice, ten phrases, about a minute. Then let Corpospeak use it. Nothing you say leaves the Mac."
+            "\(Platform.os) clones it as a Personal Voice: \(Platform.voiceSettingsPath), ten phrases, about a minute. Then let Corpospeak use it. Nothing you say leaves your \(Platform.device)."
         case .denied:
-            "In System Settings → Accessibility → Personal Voice, turn on “Allow Apps to Request to Use”, then try again."
+            "In \(Platform.voiceSettingsPath), turn on “Allow Apps to Request to Use”, then try again."
         case .noVoice:
-            "Create one in System Settings → Accessibility → Personal Voice (ten phrases, about a minute). Corpospeak will notice as soon as it's ready."
+            "Create one in \(Platform.voiceSettingsPath) (ten phrases, about a minute). Corpospeak will notice as soon as it's ready."
         case .ready:
             ""
         }
@@ -276,9 +311,7 @@ private struct CopyButton: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.4)) { _ in
             Button {
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                pasteboard.setString(text, forType: .string)
+                Platform.copy(text)
                 copiedAt = Date()
             } label: {
                 HStack(spacing: 6) {
@@ -415,7 +448,7 @@ private struct Waveform: View {
 /// Dark gradient with a glow that drifts slowly, breathes with the microphone, and pulses with
 /// the phase.
 private struct Backdrop: View {
-    let phase: CorpSpeakModel.Phase
+    let phase: CorpospeakModel.Phase
     let level: Float
 
     var body: some View {
@@ -476,22 +509,32 @@ private struct Backdrop: View {
 
 // MARK: - Status
 
-/// Shows what the app is doing. While it is translating or speaking, clicking it (or Escape) stops.
+/// Shows what the app is doing. While it is translating or speaking, tapping it (or Escape) stops.
 private struct StatusPill: View {
-    let model: CorpSpeakModel
+    let model: CorpospeakModel
     @State private var isHovering = false
 
-    private var phase: CorpSpeakModel.Phase { model.phase }
+    private var phase: CorpospeakModel.Phase { model.phase }
     private var silenceDeadline: Date? { model.listener.silenceDeadline }
     private var silenceInterval: TimeInterval { model.listener.silenceInterval }
     private var canStop: Bool { model.canStop }
+
+    /// With a pointer, the pill turns into a Stop button on hover. On a touch screen there is
+    /// no hover, so it shows the stop mark whenever there is something to stop.
+    private var offersStop: Bool {
+        #if os(macOS)
+        canStop && isHovering
+        #else
+        canStop
+        #endif
+    }
 
     var body: some View {
         Button {
             model.stopSpeaking()
         } label: {
             HStack(spacing: 8) {
-                if canStop && isHovering {
+                if offersStop {
                     Image(systemName: "stop.fill")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white)
@@ -499,14 +542,14 @@ private struct StatusPill: View {
                 } else {
                     dot
                 }
-                Text(canStop && isHovering ? "Stop" : text)
+                Text(offersStop && isHovering ? "Stop" : text)
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(2)
             }
             .padding(.horizontal, 13)
             .padding(.vertical, 8)
-            .background(canStop && isHovering ? Color.red.opacity(0.7) : .white.opacity(0.11), in: Capsule())
+            .background(offersStop ? Color.red.opacity(isHovering ? 0.7 : 0.35) : .white.opacity(0.11), in: Capsule())
             .overlay(Capsule().strokeBorder(.white.opacity(0.14)))
             .contentShape(Capsule())
         }
@@ -525,7 +568,10 @@ private struct StatusPill: View {
     private var dot: some View {
         let isCountingDown = silenceDeadline != nil && phase == .listening
         return TimelineView(.animation(paused: !isCountingDown)) { context in
-            let remaining = isCountingDown ? max(0, silenceDeadline!.timeIntervalSince(context.date)) : 0
+            // Read the deadline afresh on every tick: the listener clears it the moment an
+            // utterance is sent, and a tick can land after that while the captured
+            // `isCountingDown` is still true.
+            let remaining = silenceDeadline.map { max(0, $0.timeIntervalSince(context.date)) } ?? 0
             let fraction = isCountingDown && silenceInterval > 0 ? remaining / silenceInterval : 0
             ZStack {
                 Circle()
@@ -571,7 +617,7 @@ private struct StatusPill: View {
 // MARK: - Mute
 
 private struct MuteButton: View {
-    let model: CorpSpeakModel
+    let model: CorpospeakModel
 
     var body: some View {
         Button {
@@ -596,7 +642,9 @@ private struct MuteButton: View {
 
 /// Shows which voice is in use and offers the ways to set it up.
 private struct VoiceMenu: View {
-    let model: CorpSpeakModel
+    let model: CorpospeakModel
+    /// Icon only, for narrow screens.
+    let compact: Bool
 
     var body: some View {
         Menu {
@@ -609,11 +657,13 @@ private struct VoiceMenu: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                Text(label)
+                if !compact {
+                    Text(label)
+                }
             }
             .font(Type.control)
             .foregroundStyle(.white.opacity(0.65))
-            .padding(.horizontal, 12)
+            .padding(.horizontal, compact ? 9 : 12)
             .padding(.vertical, 7)
             .background(.white.opacity(0.05), in: Capsule())
             .overlay(Capsule().strokeBorder(.white.opacity(0.07)))
@@ -629,7 +679,7 @@ private struct VoiceMenu: View {
     private var label: String {
         switch model.speaker.voiceStatus {
         case .checking: "Checking voice…"
-        case .unsupported: "No Personal Voice on this Mac"
+        case .unsupported: "No Personal Voice on this \(Platform.device)"
         case .notDetermined: "No voice yet"
         case .denied: "Voice not allowed"
         case .noVoice: "No Personal Voice yet"
@@ -645,7 +695,7 @@ private struct VoiceMenu: View {
 // MARK: - Voice help
 
 private struct VoiceHelpButton: View {
-    let model: CorpSpeakModel
+    let model: CorpospeakModel
     @State private var isShowingHelp = false
 
     var body: some View {
@@ -664,6 +714,7 @@ private struct VoiceHelpButton: View {
         .accessibilityLabel("About the voice")
         .popover(isPresented: $isShowingHelp, arrowEdge: .bottom) {
             VoiceHelp(speaker: model.speaker)
+                .presentationCompactAdaptation(.popover)
         }
     }
 }
@@ -676,10 +727,10 @@ private struct VoiceHelp: View {
             Text("Voice")
                 .font(.headline)
 
-            Text("Corpospeak speaks in **your voice**: the Personal Voice that macOS creates in System Settings → Accessibility → Personal Voice. Nothing you say leaves the Mac.")
+            Text("Corpospeak speaks in **your voice**: the Personal Voice that \(Platform.os) creates in \(Platform.voiceSettingsPath). Nothing you say leaves your \(Platform.device).")
             Text(statusLine)
                 .foregroundStyle(.secondary)
-            Text("To change how it sounds, record a new Personal Voice in System Settings. You can withdraw Corpospeak's access in the same place at any time.")
+            Text("To change how it sounds, record a new Personal Voice in \(Platform.settings). You can withdraw Corpospeak's access in the same place at any time.")
                 .foregroundStyle(.secondary)
 
             Divider()
@@ -697,9 +748,9 @@ private struct VoiceHelp: View {
     private var statusLine: String {
         switch speaker.voiceStatus {
         case .checking: "Looking for your Personal Voice…"
-        case .unsupported: "This Mac can't offer a Personal Voice, so nothing can be spoken."
+        case .unsupported: "This \(Platform.device) can't offer a Personal Voice, so nothing can be spoken."
         case .notDetermined: "Corpospeak hasn't asked to use your Personal Voice yet. Choose “Use my Personal Voice…” from the voice menu."
-        case .denied: "Corpospeak isn't allowed to use your Personal Voice. Turn on “Allow Apps to Request to Use” in System Settings."
+        case .denied: "Corpospeak isn't allowed to use your Personal Voice. Turn on “Allow Apps to Request to Use” in \(Platform.settings)."
         case .noVoice: "No Personal Voice has been created yet."
         case .ready(let name): "Speaking with “\(name)”."
         }
@@ -707,5 +758,5 @@ private struct VoiceHelp: View {
 }
 
 #Preview {
-    ContentView(model: CorpSpeakModel())
+    ContentView(model: CorpospeakModel())
 }
