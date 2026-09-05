@@ -329,6 +329,7 @@ private struct CopyButton: View {
             .buttonStyle(.plain)
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .help("Copy the Corpospeak text (⇧⌘C)")
+            .accessibilityLabel("Copy the Corpospeak text")
             .animation(.easeInOut(duration: 0.2), value: isCopied)
         }
         .fixedSize()
@@ -557,6 +558,7 @@ private struct StatusPill: View {
         .keyboardShortcut(.escape, modifiers: [])
         .onHover { isHovering = $0 }
         .help(canStop ? "Stop translating and speaking (Esc)" : "")
+        .accessibilityLabel(canStop ? "Stop" : text)
         .animation(.easeInOut(duration: 0.2), value: isHovering)
         .animation(.easeInOut(duration: 0.25), value: phase)
     }
@@ -631,6 +633,7 @@ private struct MuteButton: View {
         .buttonStyle(.plain)
         .keyboardShortcut("m", modifiers: .command)
         .help(model.isMuted ? "Unmute the microphone (⌘M)" : "Mute the microphone (⌘M)")
+        .accessibilityLabel(model.isMuted ? "Unmute microphone" : "Mute microphone")
         .disabled(model.phase == .starting)
     }
 }
@@ -670,6 +673,7 @@ private struct VoiceMenu: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .help("The voice Corpospeak speaks with")
+        .accessibilityLabel("Voice: \(label)")
     }
 
     private var label: String {
@@ -707,6 +711,7 @@ private struct VoiceHelpButton: View {
         }
         .buttonStyle(.plain)
         .help("About the voice")
+        .accessibilityLabel("About the voice")
         .popover(isPresented: $isShowingHelp, arrowEdge: .bottom) {
             VoiceHelp(speaker: model.speaker)
                 .presentationCompactAdaptation(.popover)

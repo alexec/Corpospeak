@@ -1,6 +1,6 @@
 # Corpospeak Privacy Policy
 
-_Last updated: 4 September 2026_
+_Last updated: 5 September 2026_
 
 Corpospeak does not collect, store, transmit, or share any personal data.
 
@@ -11,9 +11,9 @@ it back to you. Speech is transcribed on your device with Apple's Speech framewo
 your device with Apple Intelligence, and spoken on your device with your Personal Voice. Audio and
 transcripts are processed in memory and are not saved to disk.
 
-On Macs where on-device speech recognition is not available for your language, Apple's Speech
-framework may send audio to Apple for recognition under Apple's privacy policy. Corpospeak has no
-access to that data beyond the transcript it receives.
+Corpospeak only ever uses on-device speech recognition. If your device cannot recognise your
+language by itself, the app tells you so and does not listen; it never falls back to Apple's
+servers.
 
 ## Personal Voice
 

@@ -31,7 +31,7 @@ targets:
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSMicrophoneUsageDescription: Corpospeak listens continuously so it can translate what you say.
         NSSpeechRecognitionUsageDescription: Corpospeak transcribes your speech on-device so it can translate it.
-        NSHumanReadableCopyright: ""
+        NSHumanReadableCopyright: © 2026 Alex Collins
         # iOS and iPadOS
         UILaunchScreen:
           UIColorName: LaunchBackground

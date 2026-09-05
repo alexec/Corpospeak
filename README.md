@@ -58,6 +58,10 @@ Use a real device to hear it speak.
 Listening is paused while the app is speaking so it does not transcribe its own voice.
 
 Corpospeak makes no network connections and keeps nothing. See [PRIVACY.md](PRIVACY.md).
+Speech recognition is on-device only; if your device cannot recognise your language by itself,
+the app says so rather than sending audio to Apple.
+
+To ship a build to the App Store, see [RELEASING.md](RELEASING.md).
 
 ## Voice
 
