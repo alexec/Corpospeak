@@ -42,6 +42,8 @@ xcodebuild -project CorpSpeak.xcodeproj -scheme CorpSpeak -configuration Debug b
 
 Listening is paused while the app is speaking so it does not transcribe its own voice.
 
+CorpSpeak makes no network connections and keeps nothing. See [PRIVACY.md](PRIVACY.md).
+
 ## Voice
 
 CorpSpeak speaks only in your own voice, using the Personal Voice that macOS creates. Create
