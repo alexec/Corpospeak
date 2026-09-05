@@ -43,6 +43,21 @@ session so the microphone and playback share it.
 Speaks with a system voice out of the box, so the Simulator works too — including hearing it
 speak, since the Simulator ships system voices even though it cannot create a Personal Voice.
 
+### Installing on a physical device
+
+Neither the App Store nor `devicectl` checks a device's Apple Intelligence eligibility before
+installing — there's no reliable Info.plist or App Store Connect setting for it (Apple's own DTS
+engineers have confirmed as much: the closest key, `UIRequiredDeviceCapabilities`'
+`iphone-performance-gaming-tier`, checks GPU tier, not the Neural Engine Foundation Models needs).
+So an ineligible device (e.g. the base iPad's A16 chip, one tier short of what Apple Intelligence
+needs) will happily accept an install and then simply never be able to rewrite anything. Check
+before installing:
+
+```bash
+scripts/check_apple_intelligence_eligible.py               # lists every connected device
+scripts/check_apple_intelligence_eligible.py <device-id>    # exits 1 if that device isn't eligible
+```
+
 ## How it fits together
 
 | File | Role |

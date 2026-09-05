@@ -118,7 +118,8 @@ final class Speaker {
 
         let personal = Self.personalVoices().map { VoiceOption(id: $0.identifier, name: $0.name, isPersonalVoice: true) }
         let system = Self.systemVoices().map { VoiceOption(id: $0.identifier, name: Self.displayName(for: $0), isPersonalVoice: false) }
-        voices = system + personal
+        // The user's own Personal Voice, if any, leads the list; system voices follow.
+        voices = personal + system
 
         if let selectedVoiceID, voices.contains(where: { $0.id == selectedVoiceID }) {
             // Still valid; leave it as the user chose it.
