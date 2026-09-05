@@ -11,37 +11,33 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "26.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     ALWAYS_SEARCH_USER_PATHS: NO
-packages:
-  sherpa-onnx:
-    url: https://github.com/k2-fsa/sherpa-onnx
-    from: 1.13.7
 targets:
   CorpSpeak:
     type: application
     platform: macOS
     sources:
       - CorpSpeak
-    dependencies:
-      - package: sherpa-onnx
-        product: sherpa-onnx
     info:
       path: CorpSpeak/Info.plist
       properties:
-        CFBundleDisplayName: CorpSpeak
+        CFBundleDisplayName: Corpospeak
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "2"
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationCategoryType: public.app-category.entertainment
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
-        NSMicrophoneUsageDescription: CorpSpeak listens continuously so it can translate what you say.
-        NSSpeechRecognitionUsageDescription: CorpSpeak transcribes your speech on-device so it can translate it.
+        NSMicrophoneUsageDescription: Corpospeak listens continuously so it can translate what you say.
+        NSSpeechRecognitionUsageDescription: Corpospeak transcribes your speech on-device so it can translate it.
         NSHumanReadableCopyright: ""
     entitlements:
       path: CorpSpeak/CorpSpeak.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.device.audio-input: true
-        com.apple.security.network.client: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alexcollins.CorpSpeak
-        PRODUCT_NAME: CorpSpeak
+        PRODUCT_NAME: Corpospeak
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
         DEVELOPMENT_TEAM: 6T4RVD5724

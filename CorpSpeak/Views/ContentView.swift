@@ -67,8 +67,8 @@ private struct Transcript: View {
                     Color.clear.frame(height: 1).id(Anchor.top)
                     Spacer(minLength: 0)
 
-                    if model.phase == .enrolling {
-                        enrollment
+                    if model.phase == .setup {
+                        setup
                     } else if heard.isEmpty && sentences.isEmpty {
                         emptyState
                     } else {
@@ -147,26 +147,60 @@ private struct Transcript: View {
         .transition(.opacity)
     }
 
-    private var enrollment: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionLabel("FIRST, LET ME LEARN YOUR VOICE. SAY THIS:")
-            Text(VoiceSample.phrase)
+    private var setup: some View {
+        let status = model.speaker.voiceStatus
+        return VStack(alignment: .leading, spacing: 14) {
+            SectionLabel("FIRST, CORPSPEAK NEEDS YOUR VOICE")
+            Text(setupTitle(for: status))
                 .font(.system(size: 30, weight: .medium, design: .serif))
                 .foregroundStyle(.white)
                 .lineSpacing(4)
-            if !model.enrollmentHint.isEmpty {
-                Text(model.enrollmentHint)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.orange)
+            Text(setupDetail(for: status))
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.55))
+                .lineSpacing(3)
+            if status != .unsupported {
+                HStack(spacing: 10) {
+                    SetupButton("Use my Personal Voice", systemImage: "person.wave.2", prominent: true) {
+                        Task { await model.authorizeVoice() }
+                    }
+                    SetupButton("Open System Settings", systemImage: "gear", prominent: false) {
+                        model.openVoiceSettings()
+                    }
+                }
+                .padding(.top, 6)
             }
-            if isLive {
-                WordFlow(text: model.listener.liveTranscript, font: .system(size: 17, design: .rounded), opacity: 0.5, italic: true)
-            }
-            Waveform(level: model.listener.audioLevel, isActive: true)
-                .frame(height: 40)
         }
         .frame(maxWidth: 720, alignment: .leading)
         .transition(.opacity)
+    }
+
+    private func setupTitle(for status: Speaker.VoiceStatus) -> String {
+        switch status {
+        case .checking: "Looking for your Personal Voice…"
+        case .unsupported: "This Mac can't offer a Personal Voice."
+        case .notDetermined: "Corpospeak speaks in your own voice."
+        case .denied: "Corpospeak isn't allowed to use your Personal Voice."
+        case .noVoice: "You don't have a Personal Voice yet."
+        case .ready: "Your voice is ready."
+        }
+    }
+
+    private func setupDetail(for status: Speaker.VoiceStatus) -> String {
+        switch status {
+        case .checking:
+            ""
+        case .unsupported:
+            "Corpospeak speaks only in your own voice, and macOS can't create one on this Mac."
+        case .notDetermined:
+            "macOS clones it as a Personal Voice: System Settings → Accessibility → Personal Voice, ten phrases, about a minute. Then let Corpospeak use it. Nothing you say leaves the Mac."
+        case .denied:
+            "In System Settings → Accessibility → Personal Voice, turn on “Allow Apps to Request to Use”, then try again."
+        case .noVoice:
+            "Create one in System Settings → Accessibility → Personal Voice (ten phrases, about a minute). Corpospeak will notice as soon as it's ready."
+        case .ready:
+            ""
+        }
     }
 
     /// The speaker's own sentence split while speaking, otherwise the same split of the text.
@@ -196,6 +230,35 @@ private struct SectionLabel: View {
             .font(Type.label)
             .tracking(3)
             .foregroundStyle(.white.opacity(0.38))
+    }
+}
+
+/// A capsule button for the setup step.
+private struct SetupButton: View {
+    let title: String
+    let systemImage: String
+    let prominent: Bool
+    let action: () -> Void
+
+    init(_ title: String, systemImage: String, prominent: Bool, action: @escaping () -> Void) {
+        self.title = title
+        self.systemImage = systemImage
+        self.prominent = prominent
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(prominent ? Color.black : .white.opacity(0.8))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(prominent ? Color.white.opacity(0.92) : .white.opacity(0.08), in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(prominent ? 0 : 0.12)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -232,7 +295,7 @@ private struct CopyButton: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut("c", modifiers: [.command, .shift])
-            .help("Copy the CorpSpeak text (⇧⌘C)")
+            .help("Copy the Corpospeak text (⇧⌘C)")
             .animation(.easeInOut(duration: 0.2), value: isCopied)
         }
         .fixedSize()
@@ -400,7 +463,7 @@ private struct Backdrop: View {
     private var glowColor: Color {
         switch phase {
         case .starting: Color(hue: 0.62, saturation: 0.4, brightness: 0.7)
-        case .enrolling: Color(hue: 0.92, saturation: 0.7, brightness: 1.0)
+        case .setup: Color(hue: 0.92, saturation: 0.7, brightness: 1.0)
         case .listening: Color(hue: 0.42, saturation: 0.7, brightness: 0.9)
         case .muted: Color(hue: 0.62, saturation: 0.2, brightness: 0.5)
         case .translating: Color(hue: 0.09, saturation: 0.8, brightness: 1.0)
@@ -458,7 +521,7 @@ private struct StatusPill: View {
     /// The dot, wrapped in a ring that closes as the pause runs out. When the ring completes,
     /// what was said so far is sent off.
     private var dot: some View {
-        let isCountingDown = silenceDeadline != nil && (phase == .listening || phase == .enrolling)
+        let isCountingDown = silenceDeadline != nil && phase == .listening
         return TimelineView(.animation(paused: !isCountingDown)) { context in
             let remaining = isCountingDown ? max(0, silenceDeadline!.timeIntervalSince(context.date)) : 0
             let fraction = isCountingDown && silenceInterval > 0 ? remaining / silenceInterval : 0
@@ -481,7 +544,7 @@ private struct StatusPill: View {
     private var text: String {
         switch phase {
         case .starting: "Starting…"
-        case .enrolling: "Recording your voice"
+        case .setup: "Needs your voice"
         case .listening: silenceDeadline == nil ? "Listening" : "Listening… pause to send"
         case .muted: "Muted"
         case .translating: "Translating…"
@@ -493,7 +556,7 @@ private struct StatusPill: View {
     private var color: Color {
         switch phase {
         case .starting: .gray
-        case .enrolling: .pink
+        case .setup: .pink
         case .listening: .green
         case .muted: .gray
         case .translating: .orange
@@ -528,14 +591,17 @@ private struct MuteButton: View {
 
 // MARK: - Voice button
 
-/// Shows which voice is in use and offers to record again.
+/// Shows which voice is in use and offers the ways to set it up.
 private struct VoiceMenu: View {
     let model: CorpSpeakModel
 
     var body: some View {
         Menu {
-            Button(model.speaker.hasOwnVoice ? "Record my voice again…" : "Record my voice…") {
-                model.beginEnrollment()
+            Button("Use my Personal Voice…") {
+                Task { await model.authorizeVoice() }
+            }
+            Button("Open Personal Voice settings…") {
+                model.openVoiceSettings()
             }
         } label: {
             HStack(spacing: 6) {
@@ -553,25 +619,22 @@ private struct VoiceMenu: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("The voice CorpSpeak speaks with")
+        .help("The voice Corpospeak speaks with")
     }
 
     private var label: String {
-        switch model.speaker.modelStore.state {
-        case .downloading(_, let progress): "Downloading voice cloning \(Int(progress * 100))%"
-        case .unpacking: "Preparing voice cloning…"
-        default:
-            if !model.speaker.hasOwnVoice { "No voice yet" }
-            else if model.speaker.isReady { "Your voice" }
-            else { "Loading your voice…" }
+        switch model.speaker.voiceStatus {
+        case .checking: "Checking voice…"
+        case .unsupported: "No Personal Voice on this Mac"
+        case .notDetermined: "No voice yet"
+        case .denied: "Voice not allowed"
+        case .noVoice: "No Personal Voice yet"
+        case .ready(let name): "Your voice · \(name)"
         }
     }
 
     private var icon: String {
-        switch model.speaker.modelStore.state {
-        case .downloading, .unpacking: "arrow.down.circle"
-        default: model.speaker.hasOwnVoice ? "person.wave.2" : "person.crop.circle.badge.questionmark"
-        }
+        model.speaker.isReady ? "person.wave.2" : "person.crop.circle.badge.questionmark"
     }
 }
 
@@ -587,7 +650,7 @@ private struct VoiceHelpButton: View {
         } label: {
             Image(systemName: "questionmark.circle")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(model.speaker.hasOwnVoice ? 0.45 : 0.85))
+                .foregroundStyle(.white.opacity(model.speaker.isReady ? 0.45 : 0.85))
                 .frame(width: 30, height: 30)
                 .background(.white.opacity(0.05), in: Circle())
                 .overlay(Circle().strokeBorder(.white.opacity(0.07)))
@@ -608,22 +671,10 @@ private struct VoiceHelp: View {
             Text("Voice")
                 .font(.headline)
 
-            switch speaker.modelStore.state {
-            case .downloading(_, let progress):
-                Text("Downloading the voice cloning model (about 160 MB, once). Nothing is spoken until it arrives.")
-                ProgressView(value: progress)
-            case .unpacking:
-                Text("Unpacking the voice cloning model. Nearly there.")
-            case .failed(let message):
-                Text("The voice cloning model could not be installed: \(message)")
-                Text("Nothing can be spoken without it. Relaunch to try the download again.")
-                    .foregroundStyle(.secondary)
-            default:
-                EmptyView()
-            }
-
-            Text("CorpSpeak speaks in **your voice**, cloned on this Mac by ZipVoice from the phrase you read on first launch. Nothing you say leaves the Mac.")
-            Text("If it does not sound like you, choose *Record my voice again…* and read the phrase in one go, at a natural pace, in a quiet room.")
+            Text("Corpospeak speaks in **your voice**: the Personal Voice that macOS creates in System Settings → Accessibility → Personal Voice. Nothing you say leaves the Mac.")
+            Text(statusLine)
+                .foregroundStyle(.secondary)
+            Text("To change how it sounds, record a new Personal Voice in System Settings. You can withdraw Corpospeak's access in the same place at any time.")
                 .foregroundStyle(.secondary)
 
             Divider()
@@ -636,6 +687,17 @@ private struct VoiceHelp: View {
         .font(.callout)
         .padding(18)
         .frame(width: 340)
+    }
+
+    private var statusLine: String {
+        switch speaker.voiceStatus {
+        case .checking: "Looking for your Personal Voice…"
+        case .unsupported: "This Mac can't offer a Personal Voice, so nothing can be spoken."
+        case .notDetermined: "Corpospeak hasn't asked to use your Personal Voice yet. Choose “Use my Personal Voice…” from the voice menu."
+        case .denied: "Corpospeak isn't allowed to use your Personal Voice. Turn on “Allow Apps to Request to Use” in System Settings."
+        case .noVoice: "No Personal Voice has been created yet."
+        case .ready(let name): "Speaking with “\(name)”."
+        }
     }
 }
 
