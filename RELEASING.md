@@ -53,17 +53,16 @@ The app is useless without three things a reviewer's Mac may not have. Put this 
 **App Review Information → Notes** field, and attach a short screen recording of the app
 translating a sentence so the reviewer can see it working even if they cannot set up a voice:
 
-> Corpospeak runs entirely on-device and needs three macOS 26 features turned on:
+> Corpospeak runs entirely on-device and needs two macOS 26 features turned on:
 >
 > 1. Apple Intelligence (System Settings → Apple Intelligence & Siri) on an Apple silicon Mac.
 >    The app rewrites speech with the on-device Foundation Models framework.
-> 2. A Personal Voice (System Settings → Accessibility → Personal Voice → Create a Personal
->    Voice, ten short phrases). The app speaks only in the user's own cloned voice by design;
->    there is no fallback voice. After creating it, turn on "Allow Apps to Request to Use".
-> 3. Microphone and Speech Recognition permission, which the app requests on first launch.
+> 2. Microphone and Speech Recognition permission, which the app requests on first launch.
 >
-> Then choose "Use my Personal Voice" in the app, say a sentence in plain English, and pause.
-> The app rewrites it as corporate jargon and reads it back in your voice.
+> Then say a sentence in plain English and pause. The app rewrites it as corporate jargon and
+> reads it back in a system voice — no further setup needed. The voice menu also offers the
+> user's own Personal Voice (System Settings → Accessibility → Personal Voice) as an optional
+> alternative; it is not required to use the app.
 >
 > No account, no network, no data collection. Privacy policy: https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md
 
