@@ -1,10 +1,10 @@
 import Foundation
 
-/// Defines what CorpSpeak *is*: the glossary and the prompt instructions built from it.
+/// Defines what Corpospeak *is*: the glossary and the prompt instructions built from it.
 ///
 /// Source: "The Corpospeak Field Guide", Doc. No. CS-076-R3 (76 clichés, six chapters).
-/// Each entry pairs a CorpSpeak phrase with what it actually means in plain English.
-enum CorpSpeakStyle {
+/// Each entry pairs a Corpospeak phrase with what it actually means in plain English.
+enum CorpospeakStyle {
     struct Term {
         /// The phrase as said in the meeting.
         let phrase: String
@@ -133,7 +133,7 @@ enum CorpSpeakStyle {
 
     // MARK: Worked example (the guide's "one memo, translated")
 
-    static let sampleCorpSpeak = """
+    static let sampleCorpospeak = """
         To ensure full alignment as we move forward, I want to double-click on a few action items \
         from our last sync. Let's pressure test the plan at altitude before we get too deep in the \
         weeds, then circle back once we've socialized it with the broader team. At the end of the \
@@ -149,7 +149,7 @@ enum CorpSpeakStyle {
 
     // MARK: Prompt text
 
-    /// "CorpSpeak phrase → plain meaning", grouped by chapter. Used when decoding CorpSpeak.
+    /// "Corpospeak phrase → plain meaning", grouped by chapter. Used when decoding Corpospeak.
     static var decodeGlossaryText: String {
         chapters.map { chapter in
             let lines = chapter.terms.map { "- \($0.phrase) → \($0.meaning)" }
@@ -158,7 +158,7 @@ enum CorpSpeakStyle {
         .joined(separator: "\n\n")
     }
 
-    /// "plain meaning → say CorpSpeak phrase". The same table, flipped so the model reads it as
+    /// "plain meaning → say Corpospeak phrase". The same table, flipped so the model reads it as
     /// a lookup from what the speaker means to what they should say.
     static var encodeGlossaryText: String {
         allTerms.map { "\($0.meaning) → \($0.phrase)" }
@@ -166,7 +166,7 @@ enum CorpSpeakStyle {
     }
 
     /// Short one-line pairs. Small on-device models follow these better than a long passage.
-    static let shortExamples: [(english: String, corpSpeak: String)] = [
+    static let shortExamples: [(english: String, corpospeak: String)] = [
         ("I already told you this.", "Per my last email, and just to level set, this has already been socialized."),
         ("Can we talk about this later?", "Let's put a pin in this and circle back once we've had a few cycles to pressure test it."),
         ("I don't know.", "That's a great question. I don't have full visibility into that yet, but I'll take it away and come back with some altitude."),
@@ -176,9 +176,9 @@ enum CorpSpeakStyle {
         ("Send me the Q2 numbers before lunch.", "When you have a moment before lunch, it would be a great unlock to loop me in on the Q2 numbers."),
     ]
 
-    /// What CorpSpeak does to a sentence: keep the facts, bury the ask.
+    /// What Corpospeak does to a sentence: keep the facts, bury the ask.
     static let stylePrinciples = """
-        - CorpSpeak is silly. Pile on the jargon: alignment, bandwidth, cadence, synergy, unlock, \
+        - Corpospeak is silly. Pile on the jargon: alignment, bandwidth, cadence, synergy, unlock, \
         stakeholders, socialize, level set, circle back, north star, table stakes, at the end of \
         the day, net net, directionally, pressure test, land the plane, take it offline.
         - The facts survive: names, numbers, dates, products and who is involved stay exactly as \
@@ -193,19 +193,19 @@ enum CorpSpeakStyle {
         Only what the speaker said goes in, dressed up.
         """
 
-    static var englishToCorpSpeakInstructions: String {
+    static var englishToCorpospeakInstructions: String {
         let examples = shortExamples
-            .map { "Plain English: \($0.english)\nCorpSpeak: \($0.corpSpeak)" }
+            .map { "Plain English: \($0.english)\nCorpospeak: \($0.corpospeak)" }
             .joined(separator: "\n\n")
         return """
-        You translate plain English into CorpSpeak, the dialect of corporate meetings: polished, \
+        You translate plain English into Corpospeak, the dialect of corporate meetings: polished, \
         upbeat, jargon-heavy, and evasive. The goal is comedy. Everything the speaker said is \
         still in there, but the action or question is wrapped in so much process language that \
         it takes a moment to find it.
 
         \(stylePrinciples)
 
-        Phrasebook (plain meaning → CorpSpeak phrase). Use these freely:
+        Phrasebook (plain meaning → Corpospeak phrase). Use these freely:
         \(encodeGlossaryText)
 
         Examples of the style. They are about other topics; never copy their content:
@@ -213,7 +213,7 @@ enum CorpSpeakStyle {
         \(examples)
 
         Rules:
-        - Each input sentence becomes one CorpSpeak sentence, two at most. Do not drop any \
+        - Each input sentence becomes one Corpospeak sentence, two at most. Do not drop any \
         sentence, fact or idea. Do not add new facts, reasons, analysis or justification.
         - Keep the speaker's point of view and tense.
         - Never repeat yourself. Stop when every input sentence has been rewritten.
@@ -221,23 +221,23 @@ enum CorpSpeakStyle {
         """
     }
 
-    static var corpSpeakToEnglishInstructions: String {
+    static var corpospeakToEnglishInstructions: String {
         let examples = shortExamples
-            .map { "CorpSpeak: \($0.corpSpeak)\nPlain English: \($0.english)" }
+            .map { "Corpospeak: \($0.corpospeak)\nPlain English: \($0.english)" }
             .joined(separator: "\n\n")
         return """
-        You translate CorpSpeak, the dialect of corporate meetings, into blunt plain English. You \
+        You translate Corpospeak, the dialect of corporate meetings, into blunt plain English. You \
         rewrite what the speaker said to say what they actually mean, with the filler and hedging \
         stripped out.
 
-        Glossary. Each line pairs a CorpSpeak phrase with what it actually means:
+        Glossary. Each line pairs a Corpospeak phrase with what it actually means:
         \(decodeGlossaryText)
 
         Examples:
 
         \(examples)
 
-        CorpSpeak: \(sampleCorpSpeak)
+        Corpospeak: \(sampleCorpospeak)
         Plain English: \(sampleEnglish)
 
         Rules:
