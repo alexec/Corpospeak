@@ -3,17 +3,26 @@ import Foundation
 import NaturalLanguage
 import Observation
 
-/// Reads text aloud in the user's own voice, one sentence at a time, and reports which
-/// sentence is playing.
+/// Reads text aloud, one sentence at a time, and reports which sentence is playing.
 ///
-/// The voice is the user's Personal Voice, which the system creates in Settings →
-/// Accessibility → Personal Voice and hands to apps through `AVSpeechSynthesizer` once the
-/// user allows it. There is no other voice: until the user has one and has let Corpospeak use
-/// it, nothing is spoken.
+/// By default Corpospeak speaks with a system voice, so it works the moment it launches — no
+/// setup, and it works in the Simulator. A user's Personal Voice, which the system creates in
+/// Settings → Accessibility → Personal Voice, is an option alongside the system voices once
+/// Corpospeak is allowed to use it: pick it from the voice menu to have Corpospeak speak in your
+/// own cloned voice instead.
 @MainActor
 @Observable
 final class Speaker {
-    enum VoiceStatus: Equatable {
+    /// One voice the user can choose from the voice menu.
+    struct VoiceOption: Identifiable, Equatable {
+        let id: String
+        let name: String
+        let isPersonalVoice: Bool
+    }
+
+    /// Where things stand with the user's own cloned voice, separate from which voice is
+    /// currently selected.
+    enum PersonalVoiceStatus: Equatable {
         /// Not looked yet.
         case checking
         /// This device cannot offer a Personal Voice.
@@ -24,11 +33,16 @@ final class Speaker {
         case denied
         /// Allowed, but no Personal Voice has been created.
         case noVoice
-        /// Ready to speak with the named voice.
-        case ready(String)
+        /// One or more Personal Voices are available to select.
+        case available
     }
 
-    private(set) var voiceStatus: VoiceStatus = .checking
+    private(set) var personalVoiceStatus: PersonalVoiceStatus = .checking
+    /// Every voice Corpospeak can currently speak with, system voices first.
+    private(set) var voices: [VoiceOption] = []
+    /// The identifier of the voice Corpospeak speaks with. `nil` only if no voice at all is
+    /// installed, which should not happen on a real device or the Simulator.
+    private(set) var selectedVoiceID: String?
 
     private(set) var isSpeaking = false
     /// The sentences of the text currently being spoken.
@@ -36,27 +50,31 @@ final class Speaker {
     /// Index into `sentences` of the one playing right now.
     private(set) var currentSentence: Int?
 
-    /// Called on the main actor whenever `voiceStatus` changes.
-    var onVoiceChange: (() -> Void)?
-
     private let synthesizer = AVSpeechSynthesizer()
     private let events = SynthesisEvents()
-    private var voice: AVSpeechSynthesisVoice?
     private var generation = 0
     private var finishCurrent: Resumer?
     private var voicesObserver: Task<Void, Never>?
+
+    private static let selectedVoiceDefaultsKey = "corpospeak.selectedVoiceIdentifier"
 
     init() {
         synthesizer.delegate = events
     }
 
-    /// True once a Personal Voice is available and Corpospeak may use it.
-    var isReady: Bool { voice != nil }
+    /// The voice currently selected, resolved from its identifier.
+    var selectedVoice: VoiceOption? {
+        voices.first { $0.id == selectedVoiceID }
+    }
+
+    /// True once a voice is selected and Corpospeak may speak.
+    var isReady: Bool { selectedVoiceID != nil }
 
     // MARK: Voice
 
-    /// Looks up the current permission without prompting, loads the voice if allowed, and keeps
-    /// watching for a voice being created or removed while the app runs.
+    /// Looks up the current Personal Voice permission without prompting, loads the available
+    /// voices, and keeps watching for one being created, downloaded, or removed while the app
+    /// runs.
     func prepare() {
         refresh()
         guard voicesObserver == nil else { return }
@@ -77,46 +95,89 @@ final class Speaker {
         refresh()
     }
 
-    private func refresh() {
-        let status: VoiceStatus
-        switch AVSpeechSynthesizer.personalVoiceAuthorizationStatus {
-        case .unsupported:
-            voice = nil
-            status = .unsupported
-        case .notDetermined:
-            voice = nil
-            status = .notDetermined
-        case .denied:
-            voice = nil
-            status = .denied
-        case .authorized:
-            voice = Self.personalVoice()
-            status = voice.map { .ready($0.name) } ?? .noVoice
-        @unknown default:
-            voice = nil
-            status = .unsupported
-        }
-        guard status != voiceStatus else { return }
-        voiceStatus = status
-        onVoiceChange?()
+    /// Selects the voice to speak with and remembers the choice for next launch.
+    func select(voiceID: String) {
+        guard voices.contains(where: { $0.id == voiceID }) else { return }
+        selectedVoiceID = voiceID
+        UserDefaults.standard.set(voiceID, forKey: Self.selectedVoiceDefaultsKey)
     }
 
-    /// The user's Personal Voice, preferring one in the current language if there are several.
-    private static func personalVoice() -> AVSpeechSynthesisVoice? {
-        let personal = AVSpeechSynthesisVoice.speechVoices().filter { $0.voiceTraits.contains(.isPersonalVoice) }
+    private func refresh() {
+        switch AVSpeechSynthesizer.personalVoiceAuthorizationStatus {
+        case .unsupported:
+            personalVoiceStatus = .unsupported
+        case .notDetermined:
+            personalVoiceStatus = .notDetermined
+        case .denied:
+            personalVoiceStatus = .denied
+        case .authorized:
+            personalVoiceStatus = Self.personalVoices().isEmpty ? .noVoice : .available
+        @unknown default:
+            personalVoiceStatus = .unsupported
+        }
+
+        let personal = Self.personalVoices().map { VoiceOption(id: $0.identifier, name: $0.name, isPersonalVoice: true) }
+        let system = Self.systemVoices().map { VoiceOption(id: $0.identifier, name: Self.displayName(for: $0), isPersonalVoice: false) }
+        voices = system + personal
+
+        if let selectedVoiceID, voices.contains(where: { $0.id == selectedVoiceID }) {
+            // Still valid; leave it as the user chose it.
+        } else if let saved = UserDefaults.standard.string(forKey: Self.selectedVoiceDefaultsKey),
+                  voices.contains(where: { $0.id == saved }) {
+            selectedVoiceID = saved
+        } else {
+            // A system voice by default; the user opts into their Personal Voice from the menu.
+            selectedVoiceID = Self.defaultSystemVoice()?.identifier ?? voices.first?.id
+        }
+    }
+
+    /// The user's Personal Voices, if Corpospeak has been allowed to use them.
+    private static func personalVoices() -> [AVSpeechSynthesisVoice] {
+        AVSpeechSynthesisVoice.speechVoices().filter { $0.voiceTraits.contains(.isPersonalVoice) }
+    }
+
+    /// The system's voices for the current language, one per name (the best quality installed,
+    /// where a name has both a standard and an Enhanced/Premium version). Excludes the old
+    /// novelty voices (Bad News, Zarvox, and the like), which share the modern voices' language
+    /// but not their identifier scheme.
+    private static func systemVoices() -> [AVSpeechSynthesisVoice] {
         let language = Locale.current.language.languageCode?.identifier ?? "en"
-        return personal.first { $0.language.hasPrefix(language) } ?? personal.first
+        let all = AVSpeechSynthesisVoice.speechVoices().filter {
+            !$0.voiceTraits.contains(.isPersonalVoice) && !$0.identifier.hasPrefix("com.apple.speech.synthesis.voice.")
+        }
+        let matching = all.filter { $0.language.hasPrefix(language) }
+        let pool = matching.isEmpty ? all : matching
+
+        var bestByName: [String: AVSpeechSynthesisVoice] = [:]
+        for voice in pool where bestByName[voice.name].map({ $0.quality.rawValue < voice.quality.rawValue }) ?? true {
+            bestByName[voice.name] = voice
+        }
+        return bestByName.values.sorted { $0.name < $1.name }
+    }
+
+    /// The system's own default voice for the current language, which is usually the best one
+    /// installed.
+    private static func defaultSystemVoice() -> AVSpeechSynthesisVoice? {
+        AVSpeechSynthesisVoice(language: nil) ?? systemVoices().first
+    }
+
+    private static func displayName(for voice: AVSpeechSynthesisVoice) -> String {
+        switch voice.quality {
+        case .enhanced: "\(voice.name) (Enhanced)"
+        case .premium: "\(voice.name) (Premium)"
+        default: voice.name
+        }
     }
 
     // MARK: Speaking
 
-    /// Speaks in the user's voice. Returns false if nothing could be spoken because no
-    /// Personal Voice is available.
+    /// Speaks with the selected voice. Returns false if nothing could be spoken because no voice
+    /// is available at all.
     @discardableResult
     func speak(_ text: String) async -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return true }
-        guard let voice else { return false }
+        guard let selectedVoiceID, let voice = AVSpeechSynthesisVoice(identifier: selectedVoiceID) else { return false }
 
         stop()
         generation += 1

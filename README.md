@@ -2,17 +2,16 @@
 
 On the App Store as *Corpospeak: In Your Voice*. An app for Mac, iPhone, and iPad that listens
 to you continuously, rewrites what you said as Corpospeak using the on-device Apple Intelligence
-model, and reads the result back to you in your own voice.
+model, and reads the result back to you.
 
 Everything runs on the device: dictation (Speech framework, on-device recognition), the rewrite
-(Foundation Models framework), and playback with your Personal Voice (AVSpeechSynthesizer).
-The app never touches the network.
+(Foundation Models framework), and playback (AVSpeechSynthesizer). The app never touches the
+network.
 
 ## Requirements
 
 - macOS 26, iOS 26, or iPadOS 26 with Apple Intelligence turned on (Settings → Apple Intelligence & Siri).
   That means a Mac with Apple silicon, an iPhone 15 Pro or later, or an iPad with an M1 or A17 Pro chip or later.
-- A Personal Voice (Settings → Accessibility → Personal Voice)
 - Xcode 26
 - [xcodegen](https://github.com/yonaskolb/XcodeGen) to generate the project file
 
@@ -41,8 +40,8 @@ things that differ between them (the settings app's name, the clipboard, and how
 Personal Voice settings), and `Corpospeak/Services/AudioSession.swift` configures the iOS audio
 session so the microphone and playback share it.
 
-The simulator cannot create a Personal Voice, so on a simulator the app stops at the setup screen.
-Use a real device to hear it speak.
+Speaks with a system voice out of the box, so the Simulator works too — including hearing it
+speak, since the Simulator ships system voices even though it cannot create a Personal Voice.
 
 ## How it fits together
 
@@ -50,7 +49,7 @@ Use a real device to hear it speak.
 | --- | --- |
 | `Corpospeak/Services/SpeechListener.swift` | Always-on microphone → `SFSpeechRecognizer`. Emits one utterance per pause in speech. |
 | `Corpospeak/Services/Translator.swift` | Sends an utterance to the on-device `LanguageModelSession` and returns the rewrite. |
-| `Corpospeak/Services/Speaker.swift` | Reads text aloud with the user's Personal Voice one sentence at a time and reports which sentence is playing. |
+| `Corpospeak/Services/Speaker.swift` | Reads text aloud one sentence at a time with the chosen voice (system, or the user's Personal Voice) and reports which sentence is playing. |
 | `Corpospeak/CorpospeakStyle.swift` | The Corpospeak glossary and prompt, taken from [The Corpospeak Field Guide](https://claude.ai/code/artifact/0a819392-f474-464f-8815-0073bd7845e9). |
 | `Corpospeak/CorpospeakModel.swift` | Wires the three services together: listen → translate → speak → listen. |
 | `Corpospeak/Views/ContentView.swift` | The single window. Tightens its spacing and type on narrow screens. |
@@ -65,11 +64,12 @@ To ship a build to the App Store, see [RELEASING.md](RELEASING.md).
 
 ## Voice
 
-Corpospeak speaks only in your own voice, using the Personal Voice that the system creates.
-Create one in Settings → Accessibility → Personal Voice (ten phrases, about a minute), turn on
-*Allow Apps to Request to Use*, then choose *Use my Personal Voice…* in the app and allow it.
-The app notices as soon as a voice appears, and nothing is spoken until then. You can withdraw
-access, or record a new voice, in the same Settings pane.
+Corpospeak speaks with a system voice by default, picked for the current language, so it works
+right away. Pick any installed voice from the voice menu, or choose *Use my Personal Voice…* to
+speak in your own cloned voice instead: create one in Settings → Accessibility → Personal Voice
+(ten phrases, about a minute), turn on *Allow Apps to Request to Use*, then allow Corpospeak to
+use it. The chosen voice is remembered across launches. You can withdraw Corpospeak's access to
+the Personal Voice, or record a new one, in the same Settings pane.
 
 Long replies are spoken one sentence at a time, and the window scrolls to keep the current
 sentence in view. Tapping the status pill (or Escape) cuts a reply off; ⌘M mutes the microphone.
