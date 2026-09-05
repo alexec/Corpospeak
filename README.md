@@ -43,6 +43,10 @@ xcodebuild -project CorpSpeak.xcodeproj -scheme CorpSpeak -configuration Debug b
 Listening is paused while the app is speaking so it does not transcribe its own voice.
 
 Corpospeak makes no network connections and keeps nothing. See [PRIVACY.md](PRIVACY.md).
+Speech recognition is on-device only; if macOS cannot recognise your language on the Mac, the
+app says so rather than sending audio to Apple.
+
+To ship a build to the Mac App Store, see [RELEASING.md](RELEASING.md).
 
 ## Voice
 

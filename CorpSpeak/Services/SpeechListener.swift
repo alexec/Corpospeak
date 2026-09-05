@@ -3,7 +3,7 @@ import Foundation
 import Observation
 import Speech
 
-/// Always-on, on-device dictation.
+/// Always-on, on-device dictation. Audio never leaves the Mac.
 ///
 /// Keeps the microphone open for the life of the app and feeds it to `SFSpeechRecognizer`.
 /// Each time the speaker pauses for `silenceInterval`, the text heard so far is delivered
@@ -78,6 +78,12 @@ final class SpeechListener {
               recognizer.isAvailable
         else {
             status = .unavailable("No speech recogniser is available for this locale.")
+            return
+        }
+        // Corpospeak never uses the network, so recognition must happen on the Mac. The
+        // sandbox has no network entitlement, and the privacy policy promises as much.
+        guard recognizer.supportsOnDeviceRecognition else {
+            status = .unavailable("On-device speech recognition isn't available for your language. Add it in System Settings → Keyboard → Dictation.")
             return
         }
         self.recognizer = recognizer
@@ -185,7 +191,7 @@ final class SpeechListener {
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
         request.addsPunctuation = true
-        request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
+        request.requiresOnDeviceRecognition = true
         feed.request = request
 
         liveTranscript = ""
