@@ -59,10 +59,10 @@ translating a sentence so the reviewer can see it working even if they cannot se
 >    The app rewrites speech with the on-device Foundation Models framework.
 > 2. Microphone and Speech Recognition permission, which the app requests on first launch.
 >
-> Then say a sentence in plain English and pause. The app rewrites it as corporate jargon and
-> reads it back in a system voice — no further setup needed. The voice menu also offers the
-> user's own Personal Voice (System Settings → Accessibility → Personal Voice) as an optional
-> alternative; it is not required to use the app.
+> On first launch the app also asks to use your Personal Voice (System Settings → Accessibility
+> → Personal Voice). This is optional: allow or decline, and the app speaks with a system voice
+> unless a Personal Voice exists. Then say a sentence in plain English and pause. The app
+> rewrites it as corporate jargon and reads it back — no further setup needed.
 >
 > No account, no network, no data collection. Privacy policy: https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md
 

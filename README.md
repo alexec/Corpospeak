@@ -79,12 +79,14 @@ To ship a build to the App Store, see [RELEASING.md](RELEASING.md).
 
 ## Voice
 
-Corpospeak speaks with a system voice by default, picked for the current language, so it works
-right away. Pick any installed voice from the voice menu, or choose *Use my Personal Voice…* to
-speak in your own cloned voice instead: create one in Settings → Accessibility → Personal Voice
-(ten phrases, about a minute), turn on *Allow Apps to Request to Use*, then allow Corpospeak to
-use it. The chosen voice is remembered across launches. You can withdraw Corpospeak's access to
-the Personal Voice, or record a new one, in the same Settings pane.
+Corpospeak is at its best in your own voice, so it asks to use your Personal Voice on first
+launch and speaks with it by default as soon as it can. Create one in Settings → Accessibility →
+Personal Voice (ten phrases, about a minute), turn on *Allow Apps to Request to Use*, and allow
+Corpospeak to use it; until then the app nudges you toward that and speaks with a system voice
+picked for the current language, so it works right away regardless. The voice menu lists your
+Personal Voice first, then every installed system voice; a voice you pick there is remembered
+across launches. You can withdraw Corpospeak's access to the Personal Voice, or record a new
+one, in the same Settings pane.
 
 Long replies are spoken one sentence at a time, and the window scrolls to keep the current
 sentence in view. Tapping the status pill (or Escape) cuts a reply off; ⌘M mutes the microphone.
