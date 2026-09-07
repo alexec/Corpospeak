@@ -49,22 +49,76 @@ processing. Select it on the version page and submit.
 
 ## 4. What App Review needs to know
 
-The app is useless without three things a reviewer's Mac may not have. Put this in the
-**App Review Information → Notes** field, and attach a short screen recording of the app
-translating a sentence so the reviewer can see it working even if they cannot set up a voice:
+The app is useless without Apple Intelligence, which a reviewer's device may not have turned
+on, and on 2026-09-05 App Review asked (Guideline 2.1, Information Needed) for a screen
+recording plus written answers to six questions. Put the text below in
+**App Review Information → Notes**, attach the recording under **App Review Information →
+Attachments**, and paste both into the Resolution Center reply when a submission is
+questioned.
 
-> Corpospeak runs entirely on-device and needs two macOS 26 features turned on:
+### Screen recording
+
+Record on whichever platform is under review, running the current OS release, with the build
+under review (rebuild its commit if the archive is gone: `git worktree add <dir> <commit>`,
+`xcodegen generate`, then a Release build). Start the recording before launching the app so
+it opens with the launch, and make sure the recording captures the microphone so the
+reviewer hears the sentence you say and the app's reply.
+
+- **macOS** (the 1.0 review): press ⇧⌘5, choose *Record Entire Screen*, and under *Options*
+  pick the Mac's microphone. Start recording, then launch the app from Finder or the Dock.
+- **iOS** (once the iPhone/iPad platform is submitted): the iPhone 15 Pro Max is the only
+  paired device that can run Apple Intelligence (`scripts/check_apple_intelligence_eligible.py`).
+  Delete the app first so the permission prompts appear, long-press the Control Center
+  record button, turn the microphone on, and start from the Home Screen.
+
+Then, in either case:
+
+1. Launch Corpospeak.
+2. Allow Microphone, Speech Recognition, and (if prompted) Personal Voice.
+3. Say a plain English sentence and pause; let the app rewrite it and read it back.
+4. Open the voice menu and pick a different voice; say one more sentence.
+5. Tap the mute button, then tap the status pill while it is speaking to stop, then stop the
+   recording.
+
+The app has no accounts, no user-generated content, and no purchases, so nothing else needs to
+be shown.
+
+### Notes field text
+
+> **Purpose and audience.** Corpospeak is a comedy toy for adults who work in offices. It
+> listens through the microphone, rewrites whatever you just said as over-the-top corporate
+> jargon ("Corpospeak"), and reads the rewrite back in a system voice or your own Personal
+> Voice. The value is entertainment: hearing your own sentences turned into meeting-speak, in
+> your own voice. There is no productivity purpose.
 >
-> 1. Apple Intelligence (System Settings → Apple Intelligence & Siri) on an Apple silicon Mac.
->    The app rewrites speech with the on-device Foundation Models framework.
-> 2. Microphone and Speech Recognition permission, which the app requests on first launch.
+> **Setup and using the main feature.** No account, login, sample file, or in-app purchase.
+> The device must have Apple Intelligence turned on (System Settings → Apple Intelligence &
+> Siri on the Mac; Settings on iPhone/iPad) — an Apple silicon Mac on macOS 26, or an iPhone
+> 15 Pro or later / an iPad with M1 or A17 Pro or later on iOS/iPadOS 26. On first launch the app asks for Microphone and Speech Recognition
+> permission (required) and Personal Voice permission (optional; decline and it uses a system
+> voice). Then say a sentence in plain English and pause. The app shows the transcript,
+> rewrites it, and speaks the result. The voice menu and mute button are in the top bar;
+> tapping the status pill (or pressing Escape) stops translation and speech. If Apple
+> Intelligence is off or the device is not eligible, the app says so on screen instead of
+> working.
 >
-> On first launch the app also asks to use your Personal Voice (System Settings → Accessibility
-> → Personal Voice). This is optional: allow or decline, and the app speaks with a system voice
-> unless a Personal Voice exists. Then say a sentence in plain English and pause. The app
-> rewrites it as corporate jargon and reads it back — no further setup needed.
+> **External services.** None. Corpospeak makes no network connections and has no
+> third-party SDKs. It uses only Apple frameworks on the device: the Speech framework with
+> on-device recognition only (it never falls back to Apple's servers), the Foundation Models
+> framework (the on-device Apple Intelligence model) for the rewrite, and AVSpeechSynthesizer
+> with system voices or the user's Personal Voice for playback. Nothing is written to disk
+> except the identifier of the chosen voice. No analytics, no ads, no accounts, no payments.
 >
-> No account, no network, no data collection. Privacy policy: https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md
+> **Regional differences.** The app's own features and content are identical in every
+> region. It depends on Apple Intelligence, so it only works where Apple makes the on-device
+> model available and in the languages Apple supports; where it is unavailable the app
+> explains that on screen. Speech recognition uses the device's current language.
+>
+> **Regulated industry / third-party material.** Neither applies. The app operates in no
+> regulated industry, and all text, prompts, and the jargon glossary are original work by the
+> developer. Voices are Apple system voices or the user's own Personal Voice.
+>
+> Privacy policy: https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md
 
 ## Listing metadata
 
