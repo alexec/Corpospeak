@@ -1,95 +1,55 @@
 # Corpospeak
 
-On the App Store as *Corpospeak: In Your Voice*. An app for Mac, iPhone, and iPad that listens
-to you continuously, rewrites what you said as Corpospeak using the on-device Apple Intelligence
-model, and reads the result back to you.
+**Say what you mean, and hear it back as what you're supposed to say.** Corpospeak
+listens to you talk, rewrites it as fluent corporate English, and reads the result
+back in your own voice.
 
-Everything runs on the device: dictation (Speech framework, on-device recognition), the rewrite
-(Foundation Models framework), and playback (AVSpeechSynthesizer). The app never touches the
-network.
+On the App Store as *Corpospeak: In Your Voice*. For Mac, iPhone and iPad.
 
 ![Corpospeak screenshot](docs/screenshot.png)
 
+## Why you'd want it
 
-## Requirements
+- **Talk normally, get the corporate version.** Say "this deadline is impossible"
+  and hear back something you could safely repeat in a stand-up.
+- **In your own voice.** Corpospeak speaks with your Personal Voice as soon as
+  you've recorded one — about a minute of reading, in Settings → Accessibility.
+  Until then it uses a system voice, so it works straight away.
+- **Continuous.** It listens, waits for you to finish a thought, rewrites, and
+  speaks — then goes back to listening. No buttons between sentences.
+- **Long replies read naturally**, one sentence at a time, with the window
+  scrolling to keep up. Tap the status pill or press Escape to cut a reply off;
+  ⌘M mutes the microphone.
+- **Nothing leaves your device.** Dictation, the rewrite and the playback all run
+  locally — Apple's Speech framework, the on-device Apple Intelligence model, and
+  the system speech synthesiser. The app makes no network connections at all and
+  keeps nothing.
 
-- macOS 26, iOS 26, or iPadOS 26 with Apple Intelligence turned on (Settings → Apple Intelligence & Siri).
-  That means a Mac with Apple silicon, an iPhone 15 Pro or later, or an iPad with an M1 or A17 Pro chip or later.
-- Xcode 26
-- [xcodegen](https://github.com/yonaskolb/XcodeGen) to generate the project file
+Needs a device with Apple Intelligence: an Apple silicon Mac, an iPhone 15 Pro or
+later, or an M1 / A17 Pro iPad or later, running macOS 26, iOS 26 or iPadOS 26.
 
-## Build and run
+## Why I wrote it
 
-```bash
-xcodegen generate
-open Corpospeak.xcodeproj
-```
+Building software has become very cheap and very fast, and that changes the maths
+of what's worth making. An app no longer has to appeal to a million people to
+justify itself — it only has to solve one real problem properly. I have a long
+list of those, and I'm working through it.
 
-Then pick My Mac, an iPhone, or an iPad as the destination and press Run. The first launch asks
-for Microphone and Speech Recognition permission.
+This one started as a joke about the gap between what people say in meetings and
+what they mean, and turned into the app I most enjoy demoing. It's also the
+clearest example of why I keep building these: a few years ago, "transcribe
+speech, run it through a language model, and speak the answer in a clone of the
+user's voice" would have been a product with a team and a server bill. It now
+runs entirely on a phone, offline, in a few hundred lines. When the interesting
+capability gets that cheap, the right response is to make a lot of small things
+with it and find out which ones people actually use.
 
-Or from the terminal:
+## Privacy
 
-```bash
-xcodebuild -project Corpospeak.xcodeproj -scheme Corpospeak -configuration Debug -destination 'platform=macOS' build
-```
+No network connections, no data collected, nothing retained. See
+[PRIVACY.md](PRIVACY.md).
 
-```bash
-xcodebuild -project Corpospeak.xcodeproj -scheme Corpospeak -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
-```
+## Contributing
 
-The single target builds for all three platforms. `Corpospeak/Platform.swift` holds the few
-things that differ between them (the settings app's name, the clipboard, and how to open the
-Personal Voice settings), and `Corpospeak/Services/AudioSession.swift` configures the iOS audio
-session so the microphone and playback share it.
-
-Speaks with a system voice out of the box, so the Simulator works too — including hearing it
-speak, since the Simulator ships system voices even though it cannot create a Personal Voice.
-
-### Installing on a physical device
-
-Neither the App Store nor `devicectl` checks a device's Apple Intelligence eligibility before
-installing — there's no reliable Info.plist or App Store Connect setting for it (Apple's own DTS
-engineers have confirmed as much: the closest key, `UIRequiredDeviceCapabilities`'
-`iphone-performance-gaming-tier`, checks GPU tier, not the Neural Engine Foundation Models needs).
-So an ineligible device (e.g. the base iPad's A16 chip, one tier short of what Apple Intelligence
-needs) will happily accept an install and then simply never be able to rewrite anything. Check
-before installing:
-
-```bash
-scripts/check_apple_intelligence_eligible.py               # lists every connected device
-scripts/check_apple_intelligence_eligible.py <device-id>    # exits 1 if that device isn't eligible
-```
-
-## How it fits together
-
-| File | Role |
-| --- | --- |
-| `Corpospeak/Services/SpeechListener.swift` | Always-on microphone → `SFSpeechRecognizer`. Emits one utterance per pause in speech. |
-| `Corpospeak/Services/Translator.swift` | Sends an utterance to the on-device `LanguageModelSession` and returns the rewrite. |
-| `Corpospeak/Services/Speaker.swift` | Reads text aloud one sentence at a time with the chosen voice (system, or the user's Personal Voice), starting as soon as the first sentence is written, and reports which sentence is playing. |
-| `Corpospeak/CorpospeakStyle.swift` | The Corpospeak glossary and prompt, taken from [The Corpospeak Field Guide](https://claude.ai/code/artifact/0a819392-f474-464f-8815-0073bd7845e9). |
-| `Corpospeak/CorpospeakModel.swift` | Wires the three services together: listen → translate → speak → listen. |
-| `Corpospeak/Views/ContentView.swift` | The single window. Tightens its spacing and type on narrow screens. |
-
-Listening is paused while the app is speaking so it does not transcribe its own voice.
-
-Corpospeak makes no network connections and keeps nothing. See [PRIVACY.md](PRIVACY.md).
-Speech recognition is on-device only; if your device cannot recognise your language by itself,
-the app says so rather than sending audio to Apple.
-
-To ship a build to the App Store, see [RELEASING.md](RELEASING.md).
-
-## Voice
-
-Corpospeak is at its best in your own voice, so it asks to use your Personal Voice on first
-launch and speaks with it by default as soon as it can. Create one in Settings → Accessibility →
-Personal Voice (ten phrases, about a minute), turn on *Allow Apps to Request to Use*, and allow
-Corpospeak to use it; until then the app nudges you toward that and speaks with a system voice
-picked for the current language, so it works right away regardless. The voice menu lists your
-Personal Voice first, then every installed system voice; a voice you pick there is remembered
-across launches. You can withdraw Corpospeak's access to the Personal Voice, or record a new
-one, in the same Settings pane.
-
-Long replies are spoken one sentence at a time, and the window scrolls to keep the current
-sentence in view. Tapping the status pill (or Escape) cuts a reply off; ⌘M mutes the microphone.
+Build instructions, the device-eligibility checker and a map of the code are in
+[CONTRIBUTING.md](CONTRIBUTING.md).
