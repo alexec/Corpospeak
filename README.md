@@ -49,6 +49,18 @@ with it and find out which ones people actually use.
 No network connections, no data collected, nothing retained. See
 [PRIVACY.md](PRIVACY.md).
 
+## Licence
+
+The code is MIT — see [LICENSE](LICENSE).
+
+That covers the source only. It does **not** cover this app's artwork: the app
+icon (`Corpospeak/Assets.xcassets/AppIcon.appiconset`) and the screenshot in
+`docs/`, which remain © 2026 Alex Collins, all rights reserved. Nor does it
+grant any right to the name “Corpospeak” — a trademark is a separate thing from
+a copyright licence.
+
+Fork the code freely. Please ship it under your own name and your own icon.
+
 ## Contributing
 
 Build instructions, the device-eligibility checker and a map of the code are in
