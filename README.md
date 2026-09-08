@@ -8,6 +8,9 @@ Everything runs on the device: dictation (Speech framework, on-device recognitio
 (Foundation Models framework), and playback (AVSpeechSynthesizer). The app never touches the
 network.
 
+![Corpospeak screenshot](docs/screenshot.png)
+
+
 ## Requirements
 
 - macOS 26, iOS 26, or iPadOS 26 with Apple Intelligence turned on (Settings → Apple Intelligence & Siri).
