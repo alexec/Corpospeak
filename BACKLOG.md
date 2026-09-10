@@ -16,12 +16,22 @@
    - **iOS is now on the record and waiting on screenshots.** The iOS platform was added
      on 2026-09-10 and **1.0 (4)** is uploaded and attached to iOS 1.0, with the
      description, keywords, support URL, copyright, contact details and App Review notes
-     filled in, and release set to manual. It is deliberately not submitted. What is left
-     is the two things that need the app visibly working on an Apple-Intelligence-eligible
-     device: **iPhone 6.5" and iPad screenshots**, and the **Guideline 2.1 screen
-     recording**. Both are blocked on the iOS 27 guardrail refusing rewrites (item 5), and
-     there is no eligible iPad in the house, so the iPad set needs a simulator or borrowed
-     hardware.
+     filled in, and release set to manual. It is deliberately not submitted; the version
+     page still reads *Add for Review*, so this is a first submission and not a
+     resubmission. What is left is the three things that need the app visibly working on
+     an Apple-Intelligence-eligible device, checked in App Store Connect on 2026-09-10:
+     **iPhone 6.5" screenshots (0 of 10)**, **iPad 13" screenshots (0 of 10)**, and the
+     **Guideline 2.1 screen recording**, which is not attached (App Review Information →
+     Attachment is empty). The iOS 27 guardrail that used to block these is fixed
+     (item 5). All three now need only the iPhone 15 Pro Max, which is the one eligible
+     device in the house. A simulator cannot stand in: the app has no way to inject text,
+     so a screenshot needs someone speaking into a microphone. There is no eligible iPad,
+     so the iPad set has to come from the same iPhone session or borrowed hardware.
+   - **Build 5 has never been uploaded.** `project.yml` says 1.0 (5) and the branch
+     `claude/ship-build-5` carries the bump plus *Explain the app before asking for the
+     microphone*. App Store Connect has builds 3 and 4 only. Decide before submitting
+     whether iOS 1.0 goes out as build 4, which is attached now and does not have the
+     permission explanation, or as build 5, which needs an archive and upload first.
    - **A new macOS version is still outstanding.** Create 1.0.1 (or 1.1), archive and
      upload build 4 or later for macOS, attach it, submit. The review notes in
      `RELEASING.md` §4 cleared review once, but they now say the app has no third-party
@@ -43,7 +53,11 @@
    - Budget well above the 80MB the ONNX figure suggests: FluidAudio's Core ML build is ~300MB
      all in, ~23MB of which is G2P lexicons.
 
-5. **The iOS 27 model refuses rewrites.** The phone reports the model available and the
+5. **~~The iOS 27 model refuses rewrites.~~ Fixed 2026-09-09** by naming the task as parody
+   of the speaker's own words in the opening line (phone refusals 2/12 → 0/11). Kept below
+   for the reasoning, which still applies to any future prompt change.
+
+   **The iOS 27 model refuses rewrites.** The phone reports the model available and the
    OS example split working ("work (OS 27+)"), so it is the guardrail rejecting the
    content, not a wrong example set. Simplifying the prompt is measurably the wrong fix:
    cutting the phrasebook from 95 terms to 20 took facts kept from 84% to 64% on the Mac
@@ -61,3 +75,22 @@
   README both promise no network connections at all, and that promise is in the App Store review
   notes. Bundle the model instead. If size ever forces the issue, Apple's On-Demand Resources is
   the fallback, not a third-party fetch.
+
+## Minor review findings
+
+- [ ] ASR-metadata · 2026-09-10 · App Store Connect → App Information · subtitle reads
+  "Say it. Hear it in CorpSpeak", spelling the app the old way; the name, description and
+  the app itself all say Corpospeak.
+- [ ] ASR-privacy · 2026-09-10 · App Store Connect → App Privacy · the privacy policy URL
+  is pinned to commit 22c7dc3 under the old repo name (`alexec/CorpSpeak`). That version
+  is titled "CorpSpeak Privacy Policy", is dated 4 September, talks only about Macs, and
+  says speech "may send audio to Apple for recognition", which the app no longer does.
+  The review notes cite `alexec/Corpospeak/blob/main/PRIVACY.md` instead. Point the URL at
+  `main`.
+- [ ] ASR-rights · 2026-09-10 · App Store Connect → App Information · Content Rights says
+  the app contains no third-party content, while it bundles the Apache-2.0 Kokoro model.
+  The App Review notes disclose Kokoro, so this is a judgement call rather than a
+  contradiction; open-source code is not usually what the question means.
+- [ ] ASR-attribution · 2026-09-10 · repo root · nothing in the app or the repo carries the
+  Apache-2.0 licence text for Kokoro or FluidAudio. Apache 2.0 §4 asks for it with any
+  distribution. There is no Settings screen to put an acknowledgements row in yet.
