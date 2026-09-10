@@ -1,0 +1,58 @@
+app: Corpospeak
+scheme: Corpospeak
+project: Corpospeak.xcodeproj     # generated — edit project.yml
+bundle_id: com.alexcollins.CorpSpeak    # never changes; SKU is `corpspeak`
+platforms: [ios, macos]           # one App Store record covers both
+
+phase: live               # dev | test | review | live — see the sdlc skill; only Alex moves it
+phase_history:
+  - dev 2026-09-09          # set by Alex
+  - live 2026-09-10         # Alex: "approved in the AppStore"; macOS 1.0 (1) released automatically
+
+stages: [survey, land, bump, archive-upload, tidy-build, report]
+# No device stage here — installing on a device is the `run` skill, not this one.
+# No TestFlight rollout: this app goes to App Store review, and the handover below
+# is the part only Alex can do.
+
+git:
+  repo: true
+  workflow: branch-and-pr         # branch `claude/ship-build-N`, commit the bump, open the PR
+  tag_bump_commit: build-N        # archives aren't kept; App Review may need an exact rebuild
+
+version:
+  file: project.yml
+  build_key: CFBundleVersion
+  also_check: Corpospeak/Info.plist    # preflight fails if the two disagree
+  managed_by_asc: false
+
+release:
+  script: scripts/ship.sh   # one RELEASING.md section per subcommand
+  script_usage: |
+    ship.sh preflight                 tree, tools, version, changes since the last bump
+    ship.sh bump [N] [--version X.Y]  CFBundleVersion (default +1), xcodegen, Info.plist check
+    ship.sh archive <ios|mac>         Release archive into build/ (several minutes each)
+    ship.sh upload <ios|mac>          xcodebuild -exportArchive straight to App Store Connect
+    ship.sh all [--ios-only]          bump, then archive + upload each platform
+  export_options: ExportOptions.plist  # repo root; destination: upload
+  logs: build/ship-<platform>-*.log
+  notes: RELEASING.md
+
+handover:                          # the browser-only part, with the real build number filled in
+  - Wait for processing (Apple emails), then pick 1.0 (N) under Build on each platform's page.
+  - Paste the Notes field text from RELEASING.md §4 into App Review Information → Notes and
+    attach the screen recording (script also in §4; the iPhone 15 Pro Max is the only paired
+    device that can record the iOS one).
+  - Submit for review. If the submission was previously questioned, reply in the Resolution
+    Center with the same notes and recording.
+  - Update BACKLOG.md if the publish item is now done, and record build/date/commit/platforms
+    in memory (`app-store-listing`).
+
+quirks:
+  - If preflight reports PROMPT CHANGED, run the `prompt-eval` skill first unless Alex says
+    the eval is already done. A prompt that copies its examples isn't worth a build number.
+  - macOS has no `timeout` command; rely on the Bash tool's timeout.
+  - A build installed with devicectl on an ineligible device (the paired A16 iPad) runs but
+    can't translate — expected, not a regression.
+    `scripts/check_apple_intelligence_eligible.py` says which devices count.
+  - Rebuilding a submitted build: `git worktree add <dir> build-N`, `xcodegen generate`,
+    then a Release build.
