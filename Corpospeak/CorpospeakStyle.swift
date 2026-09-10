@@ -173,9 +173,16 @@ enum CorpospeakStyle {
     /// - On 26.x, work examples get pasted into replies about anything similar ("remediation
     ///   pathway for the login experience" turned up in sentences about servers), losing the
     ///   speaker's facts; everyday examples fixed that (facts kept ~70% → ~85%, copying → 0).
-    /// - On the 27 beta, the model's guardrail refuses every request ("may contain unsafe
-    ///   content") when the examples are about anything but work — each everyday example alone
-    ///   was enough — while the work examples pass. Revisit when 27 ships.
+    /// - On the 27 beta, the model's guardrail refuses ("may contain unsafe content") when the
+    ///   examples are about anything but work — each everyday example alone was enough.
+    ///
+    /// The 27 line moved again by 2026-09-09: the work examples stopped being enough on their
+    /// own, and refusals came back. What fixed it was not the examples and not trimming the
+    /// prompt but the opening line naming this as parody of the speaker's own words — measured
+    /// on the phone, refusals went 2/12 to 0/11, including the one sentence ("the client in
+    /// Denver wants a 10% discount") that every other variant refused in both runs. Saying the
+    /// prompt is less evasive did nothing; rewriting "bury the ask" as padding made it worse,
+    /// 6/12. Revisit when 27 ships.
     static var shortExamples: [(english: String, corpospeak: String)] {
         if #available(iOS 27, macOS 27, *) { return workExamples }
         return homeExamples
@@ -228,6 +235,9 @@ enum CorpospeakStyle {
             .map { "Plain English: \($0.english)\nCorpospeak: \($0.corpospeak)" }
             .joined(separator: "\n\n")
         return """
+        You write parody. It is a comedy bit about corporate meeting-speak, for the amusement of \
+        the person who said the line — they are rewriting their own words.
+
         You translate plain English into Corpospeak, the dialect of corporate meetings: polished, \
         upbeat, jargon-heavy, and evasive. The goal is comedy. Everything the speaker said is \
         still in there, but the action or question is wrapped in so much process language that \

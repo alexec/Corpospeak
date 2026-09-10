@@ -105,7 +105,12 @@ SpeechListener → CorpospeakModel → Translator → CorpospeakModel → Speake
   sentences), and the prompt must not contain a list of jargon words (the model sometimes
   replies with the list). The on-device model differs between OS versions: the iOS 27 beta's
   guardrail refuses the prompt whenever the few-shot examples aren't about work, so
-  `shortExamples` picks a set by OS version. The Mac harness only measures the Mac's model; to
+  `shortExamples` picks a set by OS version. That stopped being sufficient on 2026-09-09, when
+  27 began refusing the work examples too; what fixed it was the opening line naming the task as
+  parody of the speaker's own words (phone refusals 2/12 → 0/11, and on the Mac copying and
+  runaway both fell to zero). Trimming is not the lever it looks like: cutting the phrasebook
+  from 95 terms to 20 cost 20 points of facts kept and left refusals untouched.
+  The Mac harness only measures the Mac's model; to
   measure on a phone, build a throwaway app that runs the prompt and prints to stderr, and read
   it with `xcrun devicectl device process launch --console` (the phone must stay unlocked).
 - **`Corpospeak/Views/ContentView.swift`** — the single window; `compact` (screen width < 600)
