@@ -13,17 +13,18 @@ On the App Store as *Corpospeak: In Your Voice*. For Mac, iPhone and iPad.
 - **Talk normally, get the corporate version.** Say "this deadline is impossible"
   and hear back something you could safely repeat in a stand-up.
 - **In your own voice.** Corpospeak speaks with your Personal Voice as soon as
-  you've recorded one — about a minute of reading, in Settings → Accessibility.
-  Until then it uses a system voice, so it works straight away.
+  you've recorded one, which takes about a minute of reading in Settings →
+  Accessibility. Until then it uses Kokoro, a speech model built into the app,
+  so it works straight away.
 - **Continuous.** It listens, waits for you to finish a thought, rewrites, and
   speaks — then goes back to listening. No buttons between sentences.
 - **Long replies read naturally**, one sentence at a time, with the window
   scrolling to keep up. Tap the status pill or press Escape to cut a reply off;
   ⌘M mutes the microphone.
 - **Nothing leaves your device.** Dictation, the rewrite and the playback all run
-  locally — Apple's Speech framework, the on-device Apple Intelligence model, and
-  the system speech synthesiser. The app makes no network connections at all and
-  keeps nothing.
+  locally: Apple's Speech framework, the on-device Apple Intelligence model, and
+  either the bundled Kokoro voice or one of Apple's. The app makes no network
+  connections at all and keeps nothing.
 
 Needs a device with Apple Intelligence: an Apple silicon Mac, an iPhone 15 Pro or
 later, or an M1 / A17 Pro iPad or later, running macOS 26, iOS 26 or iPadOS 26.

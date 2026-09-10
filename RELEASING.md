@@ -126,12 +126,15 @@ be shown.
 > Intelligence is off or the device is not eligible, the app says so on screen instead of
 > working.
 >
-> **External services.** None. Corpospeak makes no network connections and has no
-> third-party SDKs. It uses only Apple frameworks on the device: the Speech framework with
-> on-device recognition only (it never falls back to Apple's servers), the Foundation Models
-> framework (the on-device Apple Intelligence model) for the rewrite, and AVSpeechSynthesizer
-> with system voices or the user's Personal Voice for playback. Nothing is written to disk
-> except the identifier of the chosen voice. No analytics, no ads, no accounts, no payments.
+> **External services.** None. Corpospeak makes no network connections of any kind.
+> Everything runs on the device: Apple's Speech framework restricted to on-device recognition
+> (it never falls back to Apple's servers), the Foundation Models framework (the on-device
+> Apple Intelligence model) for the rewrite, and for playback either AVSpeechSynthesizer with
+> built-in voices and the user's Personal Voice, or the open-weights Kokoro text-to-speech
+> model run locally through Core ML. That model and the open-source FluidAudio library that
+> loads it are bundled inside the app and are never downloaded. Nothing is written to disk
+> except the identifier of the chosen voice. No analytics, no ads, no accounts, no payments,
+> no tracking.
 >
 > **Regional differences.** The app's own features and content are identical in every
 > region. It depends on Apple Intelligence, so it only works where Apple makes the on-device
@@ -139,8 +142,9 @@ be shown.
 > explains that on screen. Speech recognition uses the device's current language.
 >
 > **Regulated industry / third-party material.** Neither applies. The app operates in no
-> regulated industry, and all text, prompts, and the jargon glossary are original work by the
-> developer. Voices are Apple system voices or the user's own Personal Voice.
+> regulated industry. All text, prompts, and the jargon glossary are original work by the
+> developer. Voices are Apple's built-in voices, the user's own Personal Voice, or the
+> Apache-2.0 licensed Kokoro model.
 >
 > Privacy policy: https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md
 
