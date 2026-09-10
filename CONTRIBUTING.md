@@ -38,6 +38,30 @@ The app speaks with a system voice out of the box, so the Simulator works too â€
 including hearing it speak, since the Simulator ships system voices even though
 it cannot create a Personal Voice.
 
+## First run
+
+Corpospeak is a **one prerequisite** app in `in-app-help`'s terms: the microphone *is* the
+app, so it is primed on the first screen and nothing else is shown first.
+
+`Corpospeak/Views/FirstRun.swift` says what the app does, that it listens the whole time it
+is open, and that nothing leaves the device. One button, "Start listening", and it opens the
+system alerts â€” Speech Recognition, then the Microphone. There is deliberately no way past
+that view that skips the alert; the HIG forbids it and App Review checks.
+
+It is **not a sheet**. A sheet is a tour you dismiss; this is the app asking for the one thing
+it needs, with its own chrome already visible above it.
+
+The Personal Voice is *not* asked here. It is offered in the voice menu, at the moment someone
+goes looking for a better voice, so a new user meets one alert chain rather than three.
+
+To see it again without deleting the app, `CorpospeakModel.forgetFirstRun()` is there in Debug
+builds. To walk it properly as a new user:
+
+```bash
+xcrun simctl uninstall <udid> com.alexcollins.CorpSpeak
+xcrun simctl privacy <udid> reset all com.alexcollins.CorpSpeak
+```
+
 ## The voices
 
 Corpospeak prefers the user's Personal Voice, then Kokoro, then one of Apple's

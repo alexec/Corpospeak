@@ -20,6 +20,12 @@ final class CorpospeakModel {
 
     private(set) var phase: Phase = .starting
 
+    /// True until the user has been told what the app does and asked for the microphone.
+    /// The permission *is* the app, so nothing is asked before they have read one screen.
+    private(set) var needsFirstRun = !UserDefaults.standard.bool(forKey: CorpospeakModel.firstRunKey)
+
+    private static let firstRunKey = "corpospeak.hasSeenFirstRun"
+
     /// The last thing the user said.
     private(set) var heard = ""
     /// Its Corpospeak rendering, growing as the model writes it.
@@ -56,12 +62,32 @@ final class CorpospeakModel {
         listener.onUtterance = { [weak self] text in
             self?.handleUtterance(text)
         }
+        // A new user reads `FirstRun` first; the alerts come from its one button. Returning
+        // users go straight to listening, which is the app already doing its job.
+        guard !needsFirstRun else { return }
         await listener.start()
         refreshPhase()
-        // Ask to use the Personal Voice on first launch, after the microphone prompts: the app
-        // is at its best in the user's own voice, and once allowed it becomes the default.
-        await speaker.requestAuthorizationIfNeeded()
     }
+
+    /// The first screen's one button: tell the system what we need, in the order the user meets
+    /// it. The Personal Voice is deliberately not asked here — it is offered in the voice menu,
+    /// at the moment someone goes looking for a better voice, so first run is one alert chain
+    /// rather than three.
+    func completeFirstRun() async {
+        UserDefaults.standard.set(true, forKey: Self.firstRunKey)
+        needsFirstRun = false
+        await listener.start()
+        refreshPhase()
+    }
+
+    #if DEBUG
+    /// Replays the first run without deleting the app. A first run that can't be replayed
+    /// can't be verified.
+    func forgetFirstRun() {
+        UserDefaults.standard.removeObject(forKey: Self.firstRunKey)
+        needsFirstRun = true
+    }
+    #endif
 
     func stop() {
         listener.stop()

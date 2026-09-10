@@ -21,9 +21,20 @@ struct ContentView: View {
                 }
                 .padding(.top, 8)
 
-                Transcript(model: model, compact: compact)
-                    .padding(.top, 16)
+                // A new user reads this in place, with the app's own chrome already above it,
+                // rather than in a sheet they dismiss. The one button opens the alerts.
+                if model.needsFirstRun {
+                    Spacer(minLength: 0)
+                    FirstRun(compact: compact) {
+                        Task { await model.completeFirstRun() }
+                    }
+                    Spacer(minLength: 0)
+                } else {
+                    Transcript(model: model, compact: compact)
+                        .padding(.top, 16)
+                }
             }
+            .animation(.spring(duration: 0.5, bounce: 0.12), value: model.needsFirstRun)
             .padding(.horizontal, compact ? 20 : 36)
             .padding(.vertical, compact ? 12 : 28)
         }
