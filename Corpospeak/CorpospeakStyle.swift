@@ -181,6 +181,12 @@ enum CorpospeakStyle {
         return homeExamples
     }
 
+    /// Which set `shortExamples` picked, for the debug line at launch.
+    static var shortExamplesName: String {
+        if #available(iOS 27, macOS 27, *) { return "work (OS 27+)" }
+        return "home (OS 26)"
+    }
+
     /// Everyday topics show the mechanism — keep the facts, bury the ask — with nothing the
     /// model can mistake for the input.
     static let homeExamples: [(english: String, corpospeak: String)] = [

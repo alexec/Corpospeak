@@ -164,8 +164,11 @@ final class KokoroEngine {
 }
 
 /// Says what happened to Kokoro, on a device where there is no other way to see it — the first
-/// load costs minutes of one-time Core ML compilation, and a failure is otherwise silent. Read it
-/// with `xcrun devicectl device process launch --console`. Debug builds only.
+/// load costs one-time Core ML compilation, and a failure is otherwise silent.
+///
+/// This writes to stderr rather than `os.Logger`, because that is the channel
+/// `xcrun devicectl device process launch --console` actually surfaces — a unified-log line never
+/// arrives, and looks identical to nothing having happened.
 private func note(_ message: String) {
     #if DEBUG
     FileHandle.standardError.write(Data(("[corpospeak] " + message + "\n").utf8))

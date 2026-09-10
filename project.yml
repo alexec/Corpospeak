@@ -6,7 +6,20 @@ options:
     iOS: "26.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
+# Spelled out because xcodegen ships no setting presets here: without these, DEBUG is never
+# defined and every `#if DEBUG` in the app silently compiles to nothing — which is a very quiet
+# way to lose a diagnostic you are relying on.
+configs:
+  Debug: debug
+  Release: release
 settings:
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      GCC_PREPROCESSOR_DEFINITIONS: DEBUG=1
+      SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+    Release:
+      SWIFT_OPTIMIZATION_LEVEL: "-O"
   base:
     SWIFT_VERSION: "5.0"
     MACOSX_DEPLOYMENT_TARGET: "26.0"

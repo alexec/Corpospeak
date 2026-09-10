@@ -43,6 +43,13 @@ final class CorpospeakModel {
 
     func start() async {
         translator.checkAvailability()
+        #if DEBUG
+        // Which few-shot set the on-device model is being given, and what it says about itself.
+        // The two OS lines disagree about which examples their guardrail accepts, so when a
+        // rewrite comes back refused this is the first thing worth knowing. See CorpospeakStyle.
+        let diagnosis = "[corpospeak] examples: \(CorpospeakStyle.shortExamplesName), availability: \(translator.availability)\n"
+        FileHandle.standardError.write(Data(diagnosis.utf8))
+        #endif
         translator.prewarm()
         speaker.prepare()
 

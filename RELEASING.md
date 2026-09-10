@@ -4,6 +4,11 @@ The App Store record is **Corpospeak: In Your Voice** (bundle ID `com.alexcollin
 which must never change, SKU `corpspeak`). Everything below runs from a terminal; Xcode's
 signed-in Apple ID handles authentication.
 
+Steps 1–3 are scripted: `scripts/ship.sh` (`preflight`, `bump`,
+`archive <ios|mac>`, `upload <ios|mac>`, or `all`) runs each one with its checks and logs, and
+the `ship-it` skill walks Claude Code through the whole release including the commit, PR, and
+the App Store Connect checklist. The sections below remain the reference for what it does.
+
 ## 1. Bump the build number
 
 Every upload needs a new `CFBundleVersion`. Edit it in `project.yml` (xcodegen writes it into
@@ -55,6 +60,25 @@ recording plus written answers to six questions. Put the text below in
 **App Review Information → Notes**, attach the recording under **App Review Information →
 Attachments**, and paste both into the Resolution Center reply when a submission is
 questioned.
+
+### After a rejection: replying is not resubmitting
+
+Answering App Review in Resolution Center does **not** put the version back in the queue. A
+rejected version stays rejected, and unread, until it is explicitly resubmitted — build 1.0 (1)
+sat idle for three days in September 2026 because the Sep 5 reply was assumed to be enough.
+Resubmitting is two clicks in two different places, and the first one is not on the submission
+page:
+
+1. On the **version page** (Distribution → the platform's version), click **Update Review**.
+   The button on the submission page — *Resubmit to App Review* — is greyed out until this is
+   done, which reads like a block but is just ordering. If a newer build has been uploaded,
+   a *Newer Build Available* dialog asks whether to submit the older one anyway; to send the
+   newer build instead, cancel, remove the earlier build from the version, and select the new
+   one before clicking *Update Review*.
+2. Back on the **submission page**, the item now reads *Ready for Review* and
+   **Resubmit to App Review** is enabled. Click it. The status becomes *Waiting for Review*.
+
+Check the apps list afterwards — the version must read *Waiting for Review*, not *Rejected*.
 
 ### Screen recording
 
