@@ -13,13 +13,29 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "26.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     ALWAYS_SEARCH_USER_PATHS: NO
+packages:
+  # Kokoro's voices, and nothing else from this package. Pinned exactly, not `from:`, because
+  # it is early-version and moves fast, and Actionable ships the same build for its diarizer —
+  # the two apps drifting onto different Core ML conversions is a debugging problem nobody
+  # wants. Bump both together. See docs/voice-engine.md.
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    exactVersion: 0.15.6
 targets:
   Corpospeak:
     type: application
     # One target, three destinations: Mac, iPhone, and iPad.
     supportedDestinations: [macOS, iOS]
+    dependencies:
+      - package: FluidAudio
     sources:
-      - Corpospeak
+      - path: Corpospeak
+        excludes: [KokoroModels]
+      # A folder reference, so the .mlmodelc bundles are copied into the app exactly as they
+      # are. Anything else lets Xcode's Core ML build step rewrite already-compiled models.
+      - path: Corpospeak/KokoroModels
+        type: folder
+        buildPhase: resources
     info:
       path: Corpospeak/Info.plist
       properties:

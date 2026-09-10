@@ -17,7 +17,21 @@ final class Speaker {
     struct VoiceOption: Identifiable, Equatable {
         let id: String
         let name: String
-        let isPersonalVoice: Bool
+        let source: VoiceSource
+
+        var isPersonalVoice: Bool { source == .personal }
+    }
+
+    /// Where a voice comes from, in the order Corpospeak prefers them. The user's own voice is
+    /// the whole point of the app; Kokoro is the best of what's left; Apple's built-in voices
+    /// sound bad enough — Enhanced and Premium downloads included — that they are a fallback
+    /// for hardware that can't run Kokoro rather than something to choose.
+    enum VoiceSource: Int, Comparable {
+        case personal
+        case kokoro
+        case system
+
+        static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
     }
 
     /// Where things stand with the user's own cloned voice, separate from which voice is
@@ -51,6 +65,10 @@ final class Speaker {
     /// Index into `sentences` of the one playing right now.
     private(set) var currentSentence: Int?
 
+    /// Kokoro, when this device can run it. Publishes no voices when it can't, so the ladder
+    /// below simply falls through to Apple's.
+    let kokoro = KokoroEngine()
+
     private let synthesizer = AVSpeechSynthesizer()
     private let events = SynthesisEvents()
     private var generation = 0
@@ -78,6 +96,13 @@ final class Speaker {
     /// runs.
     func prepare() {
         refresh()
+        // Loading the model takes a moment, so it happens in the background and the voice list
+        // picks it up when it lands — the same way it picks up a Personal Voice that finishes
+        // processing while the app is running.
+        Task { [weak self] in
+            await self?.kokoro.prepare()
+            self?.refresh()
+        }
         guard voicesObserver == nil else { return }
         voicesObserver = Task { [weak self] in
             let changes = NotificationCenter.default.notifications(named: AVSpeechSynthesizer.availableVoicesDidChangeNotification)
@@ -103,11 +128,15 @@ final class Speaker {
         refresh()
     }
 
-    /// The user's Personal Voices, if any: `voices` without the system voices.
-    var personalVoiceOptions: [VoiceOption] { voices.filter(\.isPersonalVoice) }
+    /// The user's Personal Voices, if any.
+    var personalVoiceOptions: [VoiceOption] { voices.filter { $0.source == .personal } }
 
-    /// The system voices: `voices` without the user's Personal Voices.
-    var systemVoiceOptions: [VoiceOption] { voices.filter { !$0.isPersonalVoice } }
+    /// Kokoro, when it loaded. One entry: the Neural Engine build of Kokoro publishes a single
+    /// English voice pack.
+    var kokoroVoiceOptions: [VoiceOption] { voices.filter { $0.source == .kokoro } }
+
+    /// Apple's built-in voices.
+    var systemVoiceOptions: [VoiceOption] { voices.filter { $0.source == .system } }
 
     /// Selects the voice to speak with and remembers the choice for next launch.
     func select(voiceID: String) {
@@ -130,10 +159,15 @@ final class Speaker {
             personalVoiceStatus = .unsupported
         }
 
-        let personal = Self.personalVoices().map { VoiceOption(id: $0.identifier, name: $0.name, isPersonalVoice: true) }
-        let system = Self.systemVoices().map { VoiceOption(id: $0.identifier, name: Self.displayName(for: $0), isPersonalVoice: false) }
-        // The user's own Personal Voice, if any, leads the list; system voices follow.
-        voices = personal + system
+        let personal = Self.personalVoices().map {
+            VoiceOption(id: $0.identifier, name: $0.name, source: .personal)
+        }
+        let kokoro = self.kokoro.isReady ? [Self.kokoroVoice] : []
+        let system = Self.systemVoices().map {
+            VoiceOption(id: $0.identifier, name: Self.displayName(for: $0), source: .system)
+        }
+        // Best first: the user's own voice, then Kokoro, then Apple's.
+        voices = personal + kokoro + system
 
         if let saved = UserDefaults.standard.string(forKey: Self.selectedVoiceDefaultsKey),
            voices.contains(where: { $0.id == saved }) {
@@ -142,10 +176,17 @@ final class Speaker {
         } else {
             // Until the user picks a voice, the default is their own Personal Voice as soon as
             // there is one — including the moment it is authorized or finishes processing while
-            // the app runs — and the system's default voice until then.
-            selectedVoiceID = personal.first?.id ?? Self.defaultSystemVoice()?.identifier ?? voices.first?.id
+            // the app runs — then Kokoro, and only then one of Apple's.
+            selectedVoiceID = personal.first?.id
+                ?? kokoro.first?.id
+                ?? Self.defaultSystemVoice()?.identifier
+                ?? voices.first?.id
         }
     }
+
+    /// Kokoro's entry in the voice menu. The identifier is prefixed so it can't collide with
+    /// an `AVSpeechSynthesisVoice`, and is what gets written to `UserDefaults`.
+    static let kokoroVoice = VoiceOption(id: "kokoro.\(KokoroSynthesizer.voiceName)", name: "Kokoro", source: .kokoro)
 
     /// The voice with this identifier, if it is installed and usable right now.
     private static func voice(identifier: String) -> AVSpeechSynthesisVoice? {
@@ -210,6 +251,9 @@ final class Speaker {
     /// away if no voice is available at all.
     @discardableResult
     func speak(_ sentences: AsyncStream<String>) async -> Bool {
+        if selectedVoice?.source == .kokoro, kokoro.isReady {
+            return await speakWithKokoro(sentences)
+        }
         // If the chosen voice can't be loaded right now (a Personal Voice whose access was
         // withdrawn, say), speak with the system's default rather than saying nothing.
         guard let voice = selectedVoiceID.flatMap(Self.voice(identifier:)) ?? Self.defaultSystemVoice() else { return false }
@@ -266,10 +310,45 @@ final class Speaker {
         return true
     }
 
+    /// Hands the sentences to Kokoro, keeping the same running commentary the system-voice
+    /// path publishes so the view highlights the sentence being spoken either way.
+    private func speakWithKokoro(_ sentences: AsyncStream<String>) async -> Bool {
+        stop()
+        generation += 1
+        let thisGeneration = generation
+        isSpeaking = true
+        self.sentences = []
+        currentSentence = nil
+        defer {
+            if generation == thisGeneration {
+                isSpeaking = false
+                currentSentence = nil
+            }
+        }
+
+        // Pass the sentences through, recording each one as it arrives so the view can show the
+        // reply building up before it has finished being spoken.
+        let (forwarded, feed) = AsyncStream<String>.makeStream()
+        Task { @MainActor [weak self] in
+            for await sentence in sentences {
+                guard let self, self.generation == thisGeneration else { break }
+                self.sentences.append(sentence)
+                feed.yield(sentence)
+            }
+            feed.finish()
+        }
+
+        return await kokoro.speak(forwarded) { [weak self] index in
+            guard let self, self.generation == thisGeneration else { return }
+            self.currentSentence = index
+        }
+    }
+
     /// Stops playback. Any pending `speak` returns promptly.
     func stop() {
         generation += 1
         synthesizer.stopSpeaking(at: .immediate)
+        kokoro.stop()
         finishCurrent?.resume()
         finishCurrent = nil
         isSpeaking = false

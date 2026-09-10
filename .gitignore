@@ -7,3 +7,9 @@ build/
 .DS_Store
 .build/
 .swiftpm/
+
+# Kokoro models: ~95MB of third-party binaries, fetched by scripts/fetch_kokoro_models.sh
+Corpospeak/KokoroModels/
+
+# Swift package build products for the Tools/ harnesses
+Tools/*/.build/

@@ -1,6 +1,6 @@
 # The voice engine: Kokoro alongside Personal Voice
 
-_Design record, 9 September 2026. Written before the port was chosen — see "Status" at the end._
+_Design record, 9 September 2026. Updated once the port was settled and the numbers measured._
 
 Corpospeak speaks with either the user's Personal Voice or one of Apple's built-in
 `AVSpeechSynthesis` voices. The built-in ones sound bad, Enhanced and Premium downloads
@@ -48,18 +48,62 @@ Two things separate these for Corpospeak specifically:
 
 ## Two corrections to the brief's assumptions
 
-**Size.** "Roughly 80MB quantized" is the raw PyTorch/ONNX figure. The Apple-side reality is
-bigger. FluidAudio's Core ML repo carries duration-bucketed model variants (5s, 10s, 15s; 21- and
-24-layer; both `.mlmodelc` and `.mlpackage`) plus about **23MB of G2P lexicon JSON alone**
-(`us_gold` 3MB, `us_silver` 3.11MB, `gb_gold` 2.84MB, `gb_silver` 3.66MB, and a 10.4MB
-`us_lexicon_cache`), and is reported at **~300MB** in total. We don't need every variant — one
-duration bucket plus G2P plus the US lexicon is the shippable subset — but the budget to plan
-against is well above 80MB, and that changes the bundling maths.
+**Size — the brief was right and the "~300MB" figure going round is not.** Measured against the
+HuggingFace file listing rather than a blog post: `FluidInference/kokoro-82m-coreml` is **4.7GB**
+in total, because it carries every variant — Mandarin (557MB), Japanese (94MB), duration-bucketed
+StyleTTS2 builds at ~325MB each, and a `.mlpackage` twin of every `.mlmodelc`. None of that is
+what you ship. The English Neural Engine subset actually needed is:
+
+| Part | Size |
+| --- | --- |
+| The 7-stage ANE chain (`KokoroVocoder` 49MB, `KokoroPostAlbert` 14MB, `KokoroProsody` 8.5MB, `KokoroAlbert` 5.8MB, `KokoroNoise_v2` 4.7MB, `KokoroTail`, `KokoroAlignment`) | 82MB |
+| `af_heart` voice pack | 0.5MB |
+| Shared G2P (`G2PEncoder`, `G2PDecoder`, vocab) | 1.6MB |
+| `us_lexicon_cache.json` (Misaki weak forms — pronunciation quality) | 10.4MB |
+| **Total in the app bundle** | **95MB** |
+
+So the brief's "roughly 80MB" was the right order of magnitude and my earlier correction of it was
+wrong. 95MB is comfortably under the 200MB cellular-download threshold, which makes bundling an
+easy call rather than a grudging one.
 
 **Where the performance risk actually is.** The reported 0.08 real-time factor is Kokoro measured
 *alone*. In Corpospeak it won't be alone: the design streams sentence-by-sentence, so synthesis of
 sentence N overlaps Foundation Models generating sentence N+1 — **both contending for the Neural
 Engine**. The number worth measuring is RTF while a rewrite is streaming, not in isolation.
+
+## Measured
+
+`Tools/KokoroCheck` reproduces all of this — it loads the same files the app bundles, with the
+network switched off, and prints to stderr:
+
+```
+load: 8.31s (offline)
+warm-up: 1.67s (discarded)
+  [1]  3.95s audio in  0.21s  RTF 0.053  (19x faster than real time)
+  [2]  4.20s audio in  0.22s  RTF 0.051  (20x faster than real time)
+  [3]  3.33s audio in  0.18s  RTF 0.055  (18x faster than real time)
+overall RTF 0.053 — 19.0x faster than real time
+```
+
+**Synthesis is not the bottleneck.** A four-second sentence costs about a fifth of a second, so
+the first sentence is speaking long before the rewrite has finished writing the rest. The brief's
+0.08 estimate was, if anything, pessimistic.
+
+Two things that only showed up by running it:
+
+- **The first load on a device costs minutes, once.** Core ML compiles the seven-stage chain for
+  this particular Neural Engine the first time it sees it, and caches the result: 342s cold
+  against 8.3s warm, with `KokoroVocoder` alone accounting for four minutes of the cold figure.
+  It is a one-time, per-device cost, but it is why `KokoroEngine.prepare()` loads in the
+  background and publishes Kokoro into the voice list only when it is ready — on a new install
+  the app talks in an Apple voice and switches to Kokoro when it can, rather than going quiet.
+- **Measure one process at a time.** An early run had two harnesses competing for the Neural
+  Engine on a cold cache and reported RTF 1.58 to 53 — *slower* than real time, which would have
+  killed the whole approach if believed. Anything that looks that bad here is contention, not
+  Kokoro.
+
+Both figures are from the Mac. The iPhone 15 Pro Max number is the one that decides it — see
+"Measuring on the oldest supported device" below.
 
 ## Decision: bundle the model, don't download it
 
@@ -79,7 +123,17 @@ This is achievable with FluidAudio specifically: `ModelHub.offlineMode` makes ne
 throw rather than silently reach out, and models can be loaded from a bundled directory. Set
 offline mode explicitly so the no-network promise is enforced by the code and not just intended.
 
-Ship a handful of English voices, not all 54. Voice embeddings are small; the model is the cost.
+**There is only one English voice to ship.** The brief expects "50-plus voices across about 10
+languages", which is true of Kokoro in general and not true of the Neural Engine build
+FluidAudio standardised on. Counting the voice packs in the repo: Mandarin has ~100, Japanese has 5, and
+English has exactly one — `ANE/af_heart.bin`. The 54 voices in the repo's `voices/` folder are
+`.json` for the older, deprecated StyleTTS2 backend, not `.bin` packs the ANE chain can load.
+
+That collapses the settings work: there is no Kokoro voice picker to build, just a single "Kokoro"
+entry sitting between the Personal Voice and Apple's list. If a male or British Kokoro voice is
+wanted later, the `.json` embeddings look convertible — `af_heart.bin` is 523,264 bytes, exactly
+511 x 256 x 4, the same tensor the JSON holds — but that is a conversion script and a listening
+test, not a checkbox, and it is not in this change.
 
 **If the size turns out to be unacceptable**, the fallback is Apple's On-Demand Resources — hosted
 by Apple and delivered as part of app delivery rather than app behaviour — and the privacy wording
@@ -138,16 +192,21 @@ passages there. A singing model is a different search.
 
 ## Status
 
-**Blocked on the port choice.** The brief sequences this after the Actionable streaming-diarization
-task, so the two apps standardise on the same Kokoro dependency. At the time of writing that task
-is still running and has recorded no decision.
+**Settled: FluidAudio 0.15.6, pinned exactly.** The Actionable streaming-diarization task chose it
+and wrote down why in `Actionable/docs/speech-stack-decision.md`, which asks Corpospeak to use the
+same package and version — the two apps drifting onto different Core ML conversions is a debugging
+problem nobody wants, so they bump together. That decision checked the *weights* (`ls-eend-coreml`
+MIT, `kokoro-82m-coreml` Apache 2.0); the espeak-ng question above covers the step in front of
+them, and FluidAudio's Core ML G2P clears it. Between them the licence position is clean.
 
-Everything above is deliberately port-independent. What's left once the port lands is mechanical:
-add the package, write the one adapter, vendor the model subset, wire the ladder, measure.
+It independently matches what the diligence here concluded: Apache 2.0, no espeak-ng anywhere near
+it, ANE-resident Core ML rather than MLX, and an offline mode that lets the no-network promise stay
+literally true.
 
-The diligence above says that if the choice is free, **FluidAudio is the right one for Corpospeak**
-— Apache 2.0, no espeak-ng anywhere near it, ANE-resident Core ML rather than MLX, and an offline
-mode that lets the no-network promise stay literally true.
+One thing that decision doesn't cover, because Actionable doesn't need it: **bundling**. Actionable
+can let FluidAudio download to `~/.cache/fluidaudio`. Corpospeak can't, so it ships the models and
+copies the shared G2P assets into that cache on first launch. Verified: with `ModelHub.offlineMode`
+on, the harness logs *"found in cache"* and downloads nothing.
 
 [hexgrad/kokoro#247]: https://github.com/hexgrad/kokoro/issues/247
 [FluidInference/FluidAudio]: https://github.com/FluidInference/FluidAudio

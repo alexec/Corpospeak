@@ -567,6 +567,13 @@ private struct VoiceMenu: View {
                     personalVoiceAction
                 }
             }
+            // Kokoro sits between the two: better than anything Apple ships, not the user's
+            // own voice. One entry, so it needs no heading of its own.
+            if !model.speaker.kokoroVoiceOptions.isEmpty {
+                Section {
+                    ForEach(model.speaker.kokoroVoiceOptions, content: voiceButton)
+                }
+            }
             Section("System Voices") {
                 ForEach(model.speaker.systemVoiceOptions, content: voiceButton)
             }

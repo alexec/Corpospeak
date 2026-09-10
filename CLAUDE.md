@@ -71,12 +71,25 @@ SpeechListener → CorpospeakModel → Translator → CorpospeakModel → Speake
   in side-by-side runs against the full prompt. The prewarm hides the prompt's cost instead. `checkAvailability()` reflects `SystemLanguageModel.default.availability`
   so the UI can explain *why* (device ineligible, Apple Intelligence off, model still downloading)
   rather than just failing.
-- **`Corpospeak/Services/Speaker.swift`** — speaks with a system voice by default (so it works
-  in the Simulator, which can't create a Personal Voice) and offers every installed voice plus
-  the user's own Personal Voice, once authorized, through a `voices: [VoiceOption]` list. The
-  selected voice's identifier persists in `UserDefaults` across launches. Splits text into
-  sentences (`NLTokenizer`), accepts them as a stream so speech can start before the reply is
-  finished, and reports which sentence is currently playing so the UI can highlight it.
+- **`Corpospeak/Services/Speaker.swift`** — owns the voice list and the order it prefers voices
+  in: the user's Personal Voice, then **Kokoro**, then Apple's built-in voices, which sound bad
+  enough (Enhanced and Premium downloads included) that they are a fallback rather than a choice.
+  Each `VoiceOption` carries a `source` and the ladder in `refresh()` sorts on it; the selected
+  identifier persists in `UserDefaults`. Splits text into sentences (`NLTokenizer`), accepts them
+  as a stream so speech can start before the reply is finished, and reports which sentence is
+  playing so the UI can highlight it. Personal Voice and Apple's voices are the same engine
+  (`AVSpeechSynthesizer`) with different voices, so only Kokoro branches off.
+- **`Corpospeak/Services/KokoroSynthesizer.swift`** — Kokoro 82M on the Neural Engine via
+  FluidAudio, pinned to exactly 0.15.6 (Actionable pins the same build for its diarizer; bump
+  them together). **The only file in the app that imports FluidAudio** — everything else talks to
+  the three-method `SpeechSynthesizing` protocol, so swapping the port means one new conformance.
+  The models ship in the bundle (`Corpospeak/KokoroModels`, ~95MB) and `ModelHub.offlineMode` is
+  on, because `PRIVACY.md` promises no network connections at all; don't replace that with a
+  download. Also holds the OS gate: the iOS 26.4+ line has an Apple BNNS bug that intermittently
+  crashes synthesis, so Kokoro is switched off there and the ladder falls through to Apple.
+- **`Corpospeak/Services/KokoroEngine.swift`** — plays what Kokoro produces, synthesizing sentence
+  N+1 while sentence N is playing. Kokoro works an utterance at a time, so this sentence-level
+  pipelining is the only streaming available; there is no token-by-token audio to chase.
 - **`Corpospeak/CorpospeakModel.swift`** — the only thing that talks to all three services. Owns
   a `Phase` enum the UI renders from (`starting`/`listening`/`muted`/`translating`/`speaking`/
   `error`), a small pending-utterance queue (so an utterance heard while still speaking isn't
@@ -100,6 +113,19 @@ SpeechListener → CorpospeakModel → Translator → CorpospeakModel → Speake
 - **`Corpospeak/Platform.swift`** — the few things that differ between macOS/iOS/iPadOS (the
   Settings app's name, opening Personal Voice settings, clipboard access) are isolated here
   rather than scattered behind `#if os()` checks elsewhere.
+
+### The voices
+
+Design, licence diligence, measurements and the bundling decision: `docs/voice-engine.md`. The
+short version — Kokoro's usual phonemizer (espeak-ng) is GPL-3.0 and cannot ship in an App Store
+binary; FluidAudio's Core ML G2P avoids it, which is much of why it was chosen. Measured 0.053
+real-time factor (19x faster than real time), so synthesis is not the bottleneck; the first load
+on a new device costs minutes of one-time Core ML compilation, which is why `prepare()` loads in
+the background and Kokoro joins the voice list only when ready.
+
+`swift run --package-path Tools/KokoroCheck KokoroCheck` reproduces the numbers and proves the
+models load with the network off. It prints to stderr, and must be run on its own — two processes
+competing for the Neural Engine report figures that look catastrophic and mean nothing.
 
 ### Project generation
 
