@@ -114,7 +114,7 @@ final class Translator {
 
     /// Removes any sentence that already appeared earlier in the text, keeping the first.
     private static func dropRepeatedSentences(_ text: String) -> String {
-        let sentences = Speaker.split(text)
+        let sentences = Sentences.split(text)
         guard sentences.count > 1 else { return text }
         var seen: Set<String> = []
         let kept = sentences.filter { seen.insert($0.lowercased()).inserted }

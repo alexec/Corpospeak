@@ -241,7 +241,7 @@ final class Speaker {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return true }
         let (stream, feed) = AsyncStream<String>.makeStream()
-        for sentence in Self.split(text) { feed.yield(sentence) }
+        for sentence in Sentences.split(text) { feed.yield(sentence) }
         feed.finish()
         return await speak(stream)
     }
@@ -355,18 +355,6 @@ final class Speaker {
         currentSentence = nil
     }
 
-    /// Splits text into sentences, keeping punctuation. Falls back to the whole text.
-    nonisolated static func split(_ text: String) -> [String] {
-        let tokenizer = NLTokenizer(unit: .sentence)
-        tokenizer.string = text
-        var result: [String] = []
-        tokenizer.enumerateTokens(in: text.startIndex..<text.endIndex) { range, _ in
-            let sentence = text[range].trimmingCharacters(in: .whitespacesAndNewlines)
-            if !sentence.isEmpty { result.append(sentence) }
-            return true
-        }
-        return result.isEmpty ? [text] : result
-    }
 }
 
 /// The utterances queued by one `speak` call, kept alive until it returns, and how far through

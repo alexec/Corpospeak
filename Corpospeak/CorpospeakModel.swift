@@ -253,14 +253,14 @@ private struct SentenceStreamer {
            Self.preamble.firstMatch(in: partial, range: NSRange(partial.startIndex..., in: partial)) != nil {
             return []
         }
-        return deliver(Array(Speaker.split(partial).dropLast()))
+        return deliver(Array(Sentences.split(partial).dropLast()))
     }
 
     /// Whatever is left once the reply is finished, including its last sentence.
     mutating func finish(with text: String) -> [String] {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return [] }
-        return deliver(Speaker.split(text))
+        return deliver(Sentences.split(text))
     }
 
     private mutating func deliver(_ sentences: [String]) -> [String] {

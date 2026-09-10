@@ -13,7 +13,10 @@ out="$(mktemp -d)"
   echo 'import Observation'
   echo 'import os'
   # One file, so the app's file-private helpers are reachable from the harness.
-  grep -hv '^import ' Corpospeak/CorpospeakStyle.swift Corpospeak/Services/Translator.swift Corpospeak/Services/Speaker.swift scripts/eval_prompt.swift
+  # Speaker.swift is deliberately not here: it reaches Kokoro, which reaches FluidAudio, which
+  # swiftc can't resolve without the package — and the harness only scores text, so it never
+  # needed the speaking stack.
+  grep -hv '^import ' Corpospeak/CorpospeakStyle.swift Corpospeak/Services/Sentences.swift Corpospeak/Services/Translator.swift scripts/eval_prompt.swift
 } > "$out/eval.swift"
 swiftc -Onone -parse-as-library -o "$out/eval" "$out/eval.swift"
 "$out/eval" "$@"

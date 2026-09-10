@@ -184,7 +184,7 @@ private struct Transcript: View {
     /// playback), followed by whatever the model has written since; otherwise the finished text.
     private var displayedSentences: [String] {
         guard !model.translated.isEmpty else { return [] }
-        let written = Speaker.split(model.translated)
+        let written = Sentences.split(model.translated)
         guard model.speaker.isSpeaking else { return written }
         let queued = model.speaker.sentences
         return queued + written.dropFirst(queued.count)
