@@ -11,3 +11,25 @@
 3. **Publish to the App Store.** Build 1.0 (3) is already uploaded; the Personal Voice
    default and translation speed-up landed after it, so bump `CFBundleVersion` to 4 and
    follow `RELEASING.md` to archive, upload, and submit both platforms.
+4. **Kokoro as the default voice when there's no Personal Voice.** Design, licence diligence and
+   the bundling decision are in [docs/voice-engine.md](docs/voice-engine.md). Blocked on the
+   Actionable streaming-diarization task choosing a Kokoro port, so both apps standardise on one
+   dependency. Once it lands: add the package, write the text→PCM adapter, vendor the model
+   subset into the bundle with network access off, change the default-voice ladder to
+   Personal Voice → Kokoro → Apple, and synthesize sentence N+1 while N plays.
+   - **Check the port doesn't link espeak-ng before adopting it** — it's GPL-3.0 and this app
+     ships on the App Store. `mattmireles/kokoro-coreml` doesn't document its tokenizer; the
+     other three use Misaki or a Core ML G2P.
+   - Measure RTF on the iPhone 15 Pro Max (which is the oldest device the app supports, since
+     Apple Intelligence sets the floor) *while a rewrite is streaming* — Kokoro and Foundation
+     Models contend for the Neural Engine, so the 0.08 figure measured alone isn't the one that
+     matters.
+   - Budget well above the 80MB the ONNX figure suggests: FluidAudio's Core ML build is ~300MB
+     all in, ~23MB of which is G2P lexicons.
+
+## Won't build
+
+- **Downloading voices from HuggingFace on demand.** Keeps the app small, but PRIVACY.md and the
+  README both promise no network connections at all, and that promise is in the App Store review
+  notes. Bundle the model instead. If size ever forces the issue, Apple's On-Demand Resources is
+  the fallback, not a third-party fetch.
