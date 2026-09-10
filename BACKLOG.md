@@ -78,19 +78,18 @@
 
 ## Minor review findings
 
-- [ ] ASR-metadata · 2026-09-10 · App Store Connect → App Information · subtitle reads
-  "Say it. Hear it in CorpSpeak", spelling the app the old way; the name, description and
-  the app itself all say Corpospeak.
-- [ ] ASR-privacy · 2026-09-10 · App Store Connect → App Privacy · the privacy policy URL
-  is pinned to commit 22c7dc3 under the old repo name (`alexec/CorpSpeak`). That version
-  is titled "CorpSpeak Privacy Policy", is dated 4 September, talks only about Macs, and
-  says speech "may send audio to Apple for recognition", which the app no longer does.
-  The review notes cite `alexec/Corpospeak/blob/main/PRIVACY.md` instead. Point the URL at
-  `main`.
-- [ ] ASR-rights · 2026-09-10 · App Store Connect → App Information · Content Rights says
+- [x] ASR-metadata · 2026-09-10 · App Store Connect → App Information · subtitle read
+  "Say it. Hear it in CorpSpeak", spelling the app the old way. Now "Say it. Hear it in
+  Corpospeak" (29 of 30 characters). Goes out with the next version.
+- [x] ASR-privacy · 2026-09-10 · App Store Connect → App Privacy · the privacy policy URL
+  was pinned to commit 22c7dc3 under the old repo name (`alexec/CorpSpeak`), serving a
+  Mac-only policy dated 4 September that said speech "may send audio to Apple for
+  recognition". Now `https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md`, so it
+  tracks the policy instead of freezing a copy of it.
+- [x] ASR-rights · 2026-09-10 · App Store Connect → App Information · Content Rights said
   the app contains no third-party content, while it bundles the Apache-2.0 Kokoro model.
-  The App Review notes disclose Kokoro, so this is a judgement call rather than a
-  contradiction; open-source code is not usually what the question means.
+  Now "Yes, this app has the necessary rights to its third-party content", which Apache 2.0
+  grants and the App Review notes already disclose.
 - [ ] ASR-attribution · 2026-09-10 · repo root · nothing in the app or the repo carries the
   Apache-2.0 licence text for Kokoro or FluidAudio. Apache 2.0 §4 asks for it with any
   distribution. There is no Settings screen to put an acknowledgements row in yet.
