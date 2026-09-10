@@ -8,9 +8,18 @@
    later iPad; the paired iPhone 15 Pro Max is eligible.
 2. **User testing.** Put a TestFlight build in front of a few people and collect feedback on
    the translations, the voice, and first-launch permission prompts.
-3. **Publish to the App Store.** Build 1.0 (3) is already uploaded; the Personal Voice
-   default and translation speed-up landed after it, so bump `CFBundleVersion` to 4 and
-   follow `RELEASING.md` to archive, upload, and submit both platforms.
+3. **Get the current code onto the App Store, and add the iOS platform.** macOS 1.0 went
+   live on 2026-09-10 (approved 02:41, released automatically) — but the build attached to
+   that version is **1.0 (1)**, uploaded Sep 4. Builds 2 and 3 were uploaded and never
+   attached, so the Personal Voice default, the translation speed-up and Kokoro are all
+   absent from the shipped app. Two separate jobs:
+   - **A new macOS version.** Create 1.0.1 (or 1.1) in App Store Connect, bump
+     `CFBundleVersion` past 3, archive, upload, attach, submit. The review notes in
+     `RELEASING.md` §4 cleared review once and should be reused.
+   - **The iOS platform, which has never been submitted.** The App Store record is macOS-only
+     ("Add Platform" on the version page; the listing reads "Only for Mac"), even though iOS
+     is the primary platform. It needs its own screenshots, its own screen recording (the
+     iPhone 15 Pro Max is the only paired device that can make one), and its own review.
 4. **Kokoro as the default voice when there's no Personal Voice.** Design, licence diligence and
    the bundling decision are in [docs/voice-engine.md](docs/voice-engine.md). Blocked on the
    Actionable streaming-diarization task choosing a Kokoro port, so both apps standardise on one
