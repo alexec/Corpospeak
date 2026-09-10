@@ -2,7 +2,9 @@ app: Corpospeak
 scheme: Corpospeak
 project: Corpospeak.xcodeproj     # generated — edit project.yml
 bundle_id: com.alexcollins.CorpSpeak    # never changes; SKU is `corpspeak`
+asc_app_id: 6808879411            # appstoreconnect.apple.com/apps/6808879411/distribution
 platforms: [ios, macos]           # one App Store record covers both
+# The iOS platform was added to the record on 2026-09-10; before that it was macOS-only.
 
 phase: live               # dev | test | review | live — see the sdlc skill; only Alex moves it
 phase_history:
