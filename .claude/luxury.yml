@@ -1,0 +1,16 @@
+app: Corpospeak
+bundle_id: com.alexcollins.CorpSpeak
+scheme: Corpospeak
+main_screen: the reply, full bleed — what was heard above, the Corpospeak rewrite below
+heaviest_scroll: a long reply while it is being spoken
+primary_action: mute, and stop mid-sentence
+
+settled:                      # considered, decided, do not raise again
+  - dark only; .preferredColorScheme(.dark) is the design, not an oversight
+  - no on-demand model downloads — PRIVACY.md promises no network connections (BACKLOG Won't build)
+  - the listening waveform animates continuously, so "settled" from the launch probe never fires
+
+exempt: [A11Y-FORCEDARK]
+
+history:
+  - { date: 2026-09-10, score: 47, ceiling: 68, note: first audit; gate for review }
