@@ -6,7 +6,7 @@ asc_app_id: 6808879411            # appstoreconnect.apple.com/apps/6808879411/di
 platforms: [ios, macos]           # one App Store record covers both
 # The iOS platform was added to the record on 2026-09-10; before that it was macOS-only.
 
-phase: review             # dev | test | review | live — see the sdlc skill; only Alex moves it
+phase: review             # dev | devtest | test | review | live — see the sdlc skill; only Alex moves it
 phase_history:
   - dev 2026-09-09          # set by Alex
   - live 2026-09-10         # Alex: "approved in the AppStore"; macOS 1.0 (1) released automatically
@@ -14,6 +14,9 @@ phase_history:
                             # ux review never run — this app went dev straight to live, so the
                             # dev->test gate was skipped before anyone was watching.
                             # Submitting a new version: macOS 1.0 (1) stays live meanwhile.
+tier: 1
+focus: >
+  In App Store review; the handover in the card is the remaining work. (Alex, 2026-09-10)
 
 stages: [survey, land, bump, archive-upload, tidy-build, report]
 # No device stage here — installing on a device is the `run` skill, not this one.
