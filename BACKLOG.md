@@ -120,3 +120,41 @@
 - [ ] ASR-attribution · 2026-09-10 · repo root · nothing in the app or the repo carries the
   Apache-2.0 licence text for Kokoro or FluidAudio. Apache 2.0 §4 asks for it with any
   distribution. There is no Settings screen to put an acknowledgements row in yet.
+
+## Privacy audit
+
+_T103 · 2026-09-11 · cross-app audit of all fifteen policies. Full report in
+`~/Tracking/PRIVACY-AUDIT.md`. Verdict for this app: **inconsistent**. Nothing
+in `PRIVACY.md` is false._
+
+- [ ] **The first-run sheet does not close on the house line.** `Views/FirstRun.swift:27`
+  ends on "Nothing leaves your \(Platform.device). The rewriting and the voice
+  both run here." That is true, well put, and not "Private and free forever",
+  which every other app with a sheet closes on. Twelve of fifteen carry the
+  line; this is the only app that has a sheet and ends it on something else. The
+  existing sentence is worth keeping, so the fix is to follow it with the house
+  line rather than replace it.
+
+- [ ] **The YouTube link is undisclosed.** `Views/ContentView.swift:772` is a
+  `Link` to `youtube.com/shorts/JNRDj799VK4`. Tapping it hands the user to
+  Google. The app makes no request itself, so "Corpospeak makes no network
+  connections" stays true, but a person who reads the policy and then taps the
+  link has been surprised. Hard Stop discloses exactly this shape of behaviour
+  in one sentence: "your Mac opens the meeting link in the app or browser you
+  already use. What that app then does is between you and whoever runs the
+  meeting." One line in the Network section does it.
+
+- [ ] **"No third-party services" needs a word about FluidAudio.** The claim is
+  defensible, because FluidAudio 0.15.6 is compiled in and `KokoroSynthesizer.swift:51`
+  reads the models out of `Bundle.main` with no runtime download, which was
+  checked. But it is the one claim in the set that asks the reader to know what
+  "service" excludes, and the app does ship somebody else's code. A clause
+  saying the model and the library that loads it are built in, which the Voices
+  section already half says, closes it.
+
+Not findings, recorded so they are not rechecked: `SpeechListener.swift:235`
+sets `requiresOnDeviceRecognition = true` and `:87` refuses to listen at all
+without `supportsOnDeviceRecognition`, so the no-fallback promise in the policy
+is real and is one of the three that states it properly.
+`PrivacyInfo.xcprivacy` is present and matches. App Store labels should read
+"Data Not Collected", nothing else ticked.
