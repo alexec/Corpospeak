@@ -23,6 +23,12 @@ stages: [survey, land, bump, archive-upload, tidy-build, report]
 # No TestFlight rollout: this app goes to App Store review, and the handover below
 # is the part only Alex can do.
 
+listing:
+  # App Store Connect wants a URL, not a file. GitHub renders these Markdown files as
+  # web pages, so the file in the repo is the page. Same shape in every one of the apps.
+  privacy_url: https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md
+  support_url: https://github.com/alexec/Corpospeak/blob/main/SUPPORT.md
+
 git:
   repo: true
   workflow: branch-and-pr         # branch `claude/ship-build-N`, commit the bump, open the PR
