@@ -24,10 +24,11 @@ stages: [survey, land, bump, archive-upload, tidy-build, report]
 # is the part only Alex can do.
 
 listing:
-  # App Store Connect wants a URL, not a file. GitHub renders these Markdown files as
-  # web pages, so the file in the repo is the page. Same shape in every one of the apps.
-  privacy_url: https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md
-  support_url: https://github.com/alexec/Corpospeak/blob/main/SUPPORT.md
+  # App Store Connect points at the website, not at this repo: the repo goes private
+  # later (T323) and a GitHub URL would become a dead end. PRIVACY.md and SUPPORT.md
+  # here are the source the two pages are written from. Same shape in every one of the apps.
+  privacy_url: https://www.alexecollins.com/corpospeak/privacy.html
+  support_url: https://www.alexecollins.com/corpospeak/support.html
 
 git:
   repo: true
