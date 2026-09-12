@@ -42,6 +42,27 @@ scripts/check_apple_intelligence_eligible.py               # lists every connect
 scripts/check_apple_intelligence_eligible.py <device-id>   # exits 1 if that device isn't eligible
 ```
 
+### Frames and video off a real iPhone
+
+The App Store screenshots and the Guideline 2.1 recording come off Alex's own iPhone, driven by
+a UI test with nobody at the desk. A simulator cannot produce them: on-device speech recognition
+never starts there, and no simulator has a Personal Voice.
+
+```bash
+SLOT=~/.claude/skills/simulator-testing/assets/sim-slot.sh
+UDID=$("$SLOT" claim-device iphone --app Corpospeak)
+scripts/device_capture.sh both        # recording (from deleted), then the four stills
+"$SLOT" release --mine
+```
+
+The Mac speaks the sentences through its own speakers and the phone hears them, so the whole
+pipeline in the shot is the shipping one. Frames come out at 1290 × 2796, which App Store
+Connect accepts — upload them as they come off the phone and do not resample. `recording` starts
+by **deleting the app**, which is the point: the reviewer has to see every permission prompt.
+
+The harness itself, and what it can and cannot do, is written up once for every app in
+`simulator-testing`'s `references/device-capture.md`.
+
 Releasing a build to the App Store (bumping `CFBundleVersion`, archiving both platforms,
 exporting/uploading, App Review notes) is documented step-by-step in `RELEASING.md` — follow that
 rather than reconstructing the process.

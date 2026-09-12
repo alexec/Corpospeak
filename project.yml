@@ -96,3 +96,37 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx"
+  # A UI test target that runs on Alex's own iPhone. It exists because the things this app's
+  # App Store frames have to show — a real recogniser hearing a real voice, a real Personal
+  # Voice in the menu — do not exist in any simulator (docs/device-capture.md, CAPTURE.md).
+  # It is not built or shipped with the app: nothing in the Corpospeak target depends on it.
+  CorpospeakUITests:
+    type: bundle.ui-testing
+    supportedDestinations: [iOS]
+    sources: [CorpospeakUITests]
+    dependencies:
+      - target: Corpospeak
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alexcollins.CorpSpeak.uitests
+        # Both spelled out because the app target sets them per-target rather than at project
+        # level, so a second target inherits neither: without PRODUCT_NAME the runner builds as
+        # "-Runner.app" and two build commands collide on the same empty path.
+        PRODUCT_NAME: CorpospeakUITests
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 6T4RVD5724
+        TEST_TARGET_NAME: Corpospeak
+        GENERATE_INFOPLIST_FILE: true
+schemes:
+  CorpospeakUITests:
+    build:
+      targets:
+        Corpospeak: [run, test]
+        CorpospeakUITests: [test]
+    test:
+      # The test plan is what turns the screen recording on. Without it the run keeps
+      # screenshots only, and T038's video has nowhere to come from.
+      testPlans:
+        - path: CorpospeakUITests/DeviceCapture.xctestplan
+          defaultPlan: true

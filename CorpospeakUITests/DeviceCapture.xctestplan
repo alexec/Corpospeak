@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "9F3C1A20-0000-4000-A000-000000000001",
+      "name" : "Device capture",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "preferredScreenCaptureFormat" : "screenRecording",
+    "uiTestingScreenshotsLifetime" : "keepAlways"
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Corpospeak.xcodeproj",
+        "identifier" : "CorpospeakUITests",
+        "name" : "CorpospeakUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
