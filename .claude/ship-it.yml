@@ -72,5 +72,6 @@ quirks:
   - A build installed with devicectl on an ineligible device (the paired A16 iPad) runs but
     can't translate — expected, not a regression.
     `scripts/check_apple_intelligence_eligible.py` says which devices count.
-  - Rebuilding a submitted build: `git worktree add <dir> build-N`, `xcodegen generate`,
+  - >-
+    Rebuilding a submitted build: `git worktree add <dir> build-N`, `xcodegen generate`,
     then a Release build.
