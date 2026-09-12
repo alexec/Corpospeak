@@ -119,6 +119,10 @@
   the app contains no third-party content, while it bundles the Apache-2.0 Kokoro model.
   Now "Yes, this app has the necessary rights to its third-party content", which Apache 2.0
   grants and the App Review notes already disclose.
+- [ ] ASR-settings · 2026-09-11 · `Corpospeak/Views/` · the app has no Settings screen at
+  all, so there is no *How it works* row to re-read the first-run sheet from and no
+  Debug-only Developer section to replay it. Every app has one, even when the middle is
+  empty, in which case the entry point itself is Debug-only. Filed as T176.
 - [ ] ASR-attribution · 2026-09-10 · repo root · nothing in the app or the repo carries the
   Apache-2.0 licence text for Kokoro or FluidAudio. Apache 2.0 §4 asks for it with any
   distribution. There is no Settings screen to put an acknowledgements row in yet.
