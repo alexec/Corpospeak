@@ -62,28 +62,34 @@ say_line() {
   if [ -n "$KOKORO" ]; then "$KOKORO" -v "$VOICE" "$1"; else say "$1"; fi
 }
 
-# The frames are one ordered sequence, so the speech is a schedule rather than a loop: frame 2
-# is the empty state and has to be taken before anything is said. The test waits on the app's
-# own status pill rather than on a clock, so these times only have to be roughly right.
-start_speaking() {
-  (
-    sleep 30                 # launch, first run, and frame 2 taken
-    say_line "$SHORT_LINE"   # frame 1
-    # Long enough that the app has finished reading the first reply before the next line
-    # arrives. A shorter gap put the app back into Translating while frame 1 was being taken.
-    sleep 55
-    say_line "$LONG_LINE"    # frame 4
-    # Nothing after this: frame 3 is the voice menu and wants the app quiet behind it.
-  ) &
-  SPEAKER_PID=$!
+# The test says when to speak, and the script listens. XCTest prints activity names to
+# xcodebuild's stdout, so the test emits "CUE SPEAK-SHORT" the moment it is listening and
+# "CUE SPEAK-LONG" once frame 1 is in the bag, and this watches for them.
+#
+# A fixed schedule was tried first and does not work. The script's clock starts before
+# xcodebuild has installed the app and booted the test runner, which is a minute that moves
+# from run to run: on one run the first sentence was spoken while the app was still being
+# installed, and the test then waited for a transcript of something nothing had heard.
+watch_for_cues() {
+  local log="$1" pid="$2"
+  local said_short=0 said_long=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if [ "$said_short" -eq 0 ] && grep -q "CUE SPEAK-SHORT" "$log" 2>/dev/null; then
+      said_short=1; say_line "$SHORT_LINE" &
+    fi
+    if [ "$said_long" -eq 0 ] && grep -q "CUE SPEAK-LONG" "$log" 2>/dev/null; then
+      said_long=1; say_line "$LONG_LINE" &
+    fi
+    sleep 1
+  done
 }
 
 # The recording is a different job: it is filming permission prompts, and the app should be
-# heard doing its job at the end of it, so this one just keeps talking.
+# heard doing its job at the end of it. Its test has no cues, so this one just keeps talking.
 start_speaking_for_recording() {
   (
-    sleep 20                 # launch, the first-run view, and both permission alerts
-    for _ in 1 2 3; do
+    sleep 45                 # install, launch, the first-run view, and both permission alerts
+    for _ in 1 2 3 4; do
       say_line "$SHORT_LINE"
       sleep 18
     done
@@ -121,12 +127,23 @@ build() {
     -allowProvisioningUpdates >/dev/null
 }
 
+# $3, when given, is a log the cue watcher can read while the run is in flight.
 run_tests() {
-  local only="$1" bundle="$2"
+  local only="$1" bundle="$2" log="${3:-}"
   rm -rf "$bundle"
+  local sink="${log:-$DD/test-output.log}"
+  mkdir -p "$(dirname "$sink")"
+  # The test checks the transcript against these, so a frame is never taken of something the
+  # room said rather than something the Mac said. xcodebuild strips TEST_RUNNER_ on the way in.
+  export TEST_RUNNER_EXPECTED_SHORT="$SHORT_LINE"
+  export TEST_RUNNER_EXPECTED_LONG="$LONG_LINE"
   xcodebuild test-without-building -project Corpospeak.xcodeproj -scheme "$SCHEME" \
     -destination "id=$DEVICE" -derivedDataPath "$DD" -resultBundlePath "$bundle" \
-    -only-testing:"$only" 2>&1 | grep -E "Test Case|answered|error:|PERSONAL VOICE|voice button|frame [0-9] —|frame is" || true
+    -only-testing:"$only" > "$sink" 2>&1 &
+  local pid=$!
+  [ -n "$log" ] && watch_for_cues "$sink" "$pid"
+  wait "$pid" || true
+  grep -E "Test Case|answered|error:|PERSONAL VOICE|voice button|frame [0-9] —|frame is" "$sink" || true
 }
 
 do_recording() {
@@ -145,9 +162,7 @@ do_recording() {
 do_frames() {
   echo "==> T037: the four App Store stills"
   osascript -e "set volume output volume $CAPTURE_VOLUME"
-  start_speaking
-  run_tests "CorpospeakUITests/AppStoreFrames" "$DD/frames.xcresult"
-  kill "$SPEAKER_PID" 2>/dev/null || true; SPEAKER_PID=""
+  run_tests "CorpospeakUITests/AppStoreFrames" "$DD/frames.xcresult" "$DD/frames.log"
   echo "==> exporting to $OUT/frames"
   export_results "$DD/frames.xcresult" "$OUT/frames"
 }
