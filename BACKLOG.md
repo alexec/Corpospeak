@@ -119,13 +119,28 @@
   the app contains no third-party content, while it bundles the Apache-2.0 Kokoro model.
   Now "Yes, this app has the necessary rights to its third-party content", which Apache 2.0
   grants and the App Review notes already disclose.
-- [ ] ASR-settings · 2026-09-11 · `Corpospeak/Views/` · the app has no Settings screen at
+- [x] ASR-settings · 2026-09-11 · `Corpospeak/Views/` · the app has no Settings screen at
   all, so there is no *How it works* row to re-read the first-run sheet from and no
   Debug-only Developer section to replay it. Every app has one, even when the middle is
   empty, in which case the entry point itself is Debug-only. Filed as T176.
+  Done 2026-09-11: `Corpospeak/Views/SettingsView.swift`, opened by the gear in the top
+  chrome. The middle holds the voice, which is the one thing the app persists, so the
+  entry point ships rather than being Debug-gated.
 - [ ] ASR-attribution · 2026-09-10 · repo root · nothing in the app or the repo carries the
   Apache-2.0 licence text for Kokoro or FluidAudio. Apache 2.0 §4 asks for it with any
-  distribution. There is no Settings screen to put an acknowledgements row in yet.
+  distribution. There is now a Settings screen to put an acknowledgements row in
+  (`Corpospeak/Views/SettingsView.swift`, 2026-09-11), below the voice section.
+- [ ] FR-voicehelp-popover · 2026-09-11 · `Corpospeak/Views/ContentView.swift:743` · on
+  iPhone the voice help popover renders entirely off the top of the screen. Only its arrow
+  shows, just above the `?` button. The button sits at about y=97pt and the popover asks
+  for `arrowEdge: .bottom`, which places it above the anchor, where there is no room.
+  Nothing the user came for is reachable: the Personal Voice explanation and the status
+  line are both in there. **Pre-existing, not from T339.** Checked on 2026-09-11 by
+  building `origin/main`'s `ContentView.swift` unmodified on an iPhone 17 Pro simulator and
+  tapping the same button: identical clipping, with the YouTube link still in place, so
+  removing that link neither caused it nor hid it. The fix is probably `arrowEdge: .top`,
+  or a sheet with a detent at compact widths, and it wants checking on the Mac too, where
+  the same view is a real popover and may well be fine.
 
 ## Privacy audit
 
@@ -133,15 +148,20 @@ _T103 · 2026-09-11 · cross-app audit of all fifteen policies. Full report in
 `~/Tracking/PRIVACY-AUDIT.md`. Verdict for this app: **inconsistent**. Nothing
 in `PRIVACY.md` is false._
 
-- [ ] **The first-run sheet does not close on the house line.** `Views/FirstRun.swift:27`
+- [x] **The first-run sheet does not close on the house line.** `Views/FirstRun.swift:27`
   ends on "Nothing leaves your \(Platform.device). The rewriting and the voice
   both run here." That is true, well put, and not "Private and free forever",
   which every other app with a sheet closes on. Twelve of fifteen carry the
   line; this is the only app that has a sheet and ends it on something else. The
   existing sentence is worth keeping, so the fix is to follow it with the house
   line rather than replace it.
+  Done 2026-09-11 (T124), one line rather than two: "The rewriting and the voice both run
+  on your \(Platform.device). Private and free forever." Adding the house line after the
+  existing sentence would have said private twice in three lines and made the sheet
+  longer, so the first half was folded into the second. Checked before writing "free":
+  no StoreKit, no purchase, no subscription anywhere in the tree.
 
-- [ ] **The YouTube link is undisclosed.** `Views/ContentView.swift:772` is a
+- [x] **The YouTube link is undisclosed.** `Views/ContentView.swift:772` is a
   `Link` to `youtube.com/shorts/JNRDj799VK4`. Tapping it hands the user to
   Google. The app makes no request itself, so "Corpospeak makes no network
   connections" stays true, but a person who reads the policy and then taps the
@@ -149,6 +169,11 @@ in `PRIVACY.md` is false._
   in one sentence: "your Mac opens the meeting link in the app or browser you
   already use. What that app then does is between you and whoever runs the
   meeting." One line in the Network section does it.
+  Closed the other way, 2026-09-11 (T339): the link is gone, along with the `Divider()`
+  above it, rather than the policy being softened to accommodate it. It was an easter egg
+  in a help popover; `PRIVACY.md`'s "no network connections, no third-party services" is
+  published at `alexecollins.com/corpospeak/privacy.html` and is worth more than the joke.
+  No disclosure sentence is needed now, and none was added.
 
 - [ ] **"No third-party services" needs a word about FluidAudio.** The claim is
   defensible, because FluidAudio 0.15.6 is compiled in and `KokoroSynthesizer.swift:51`

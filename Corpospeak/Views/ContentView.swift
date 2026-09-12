@@ -18,6 +18,11 @@ struct ContentView: View {
                     Spacer()
                     VoiceMenu(model: model, compact: compact)
                     VoiceHelpButton(model: model)
+                    // Hidden during first run: the primer's words are already on screen, and
+                    // nothing in the chrome should read as a way past it.
+                    if !model.needsFirstRun {
+                        SettingsButton(model: model)
+                    }
                 }
                 .padding(.top, 8)
 
@@ -753,6 +758,34 @@ private struct VoiceHelpButton: View {
     }
 }
 
+// MARK: - Settings
+
+/// Opens the Settings screen. Every one of Alex's apps has one; this app has a real setting in
+/// it (the voice), so the button ships rather than being Debug-only.
+private struct SettingsButton: View {
+    let model: CorpospeakModel
+    @State private var isShowingSettings = false
+
+    var body: some View {
+        Button {
+            isShowingSettings = true
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.55))
+                .frame(width: 30, height: 30)
+                .background(.white.opacity(0.05), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.07)))
+        }
+        .buttonStyle(.plain)
+        .help("Settings")
+        .accessibilityLabel("Settings")
+        .sheet(isPresented: $isShowingSettings) {
+            SettingsView(model: model)
+        }
+    }
+}
+
 private struct VoiceHelp: View {
     let speaker: Speaker
 
@@ -766,13 +799,6 @@ private struct VoiceHelp: View {
                 .foregroundStyle(.secondary)
             Text("Your voice leads the voice menu, with the system voices below it. Nothing you say leaves your \(Platform.device).")
                 .foregroundStyle(.secondary)
-
-            Divider()
-
-            Link(destination: URL(string: "https://www.youtube.com/shorts/JNRDj799VK4")!) {
-                Label("Got the job. No one asked what it was.", systemImage: "play.rectangle")
-            }
-            .foregroundStyle(.secondary)
         }
         .font(.callout)
         .padding(18)
