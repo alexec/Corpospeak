@@ -18,20 +18,25 @@
      description, keywords, support URL, copyright, contact details and App Review notes
      filled in, and release set to manual. It is deliberately not submitted; the version
      page still reads *Add for Review*, so this is a first submission and not a
-     resubmission. What is left is the three things that need the app visibly working on
-     an Apple-Intelligence-eligible device, checked in App Store Connect on 2026-09-10:
-     **iPhone 6.5" screenshots (0 of 10)**, **iPad 13" screenshots (0 of 10)**, and the
-     **Guideline 2.1 screen recording**, which is not attached (App Review Information →
-     Attachment is empty). The iOS 27 guardrail that used to block these is fixed
-     (item 5). All three now need only the iPhone 15 Pro Max, which is the one eligible
-     device in the house. A simulator cannot stand in: the app has no way to inject text,
-     so a screenshot needs someone speaking into a microphone. There is no eligible iPad,
-     so the iPad set has to come from the same iPhone session or borrowed hardware.
-   - **The iPad set is 1 of 4, and a simulator cannot finish it.** Measured 2026-09-10 on an
-     iPad Pro 13-inch (M5) simulator, iOS 26.5, Release build.
-     `Corpospeak/AppStore/screenshots/en-US/2-listening.png` is captured: 2752 × 2064,
-     landscape, the empty state. The other three cannot come from any simulator, and the
-     reason is **not** that nobody spoke into the microphone:
+     resubmission. Three things were outstanding when App Store Connect was checked on
+     2026-09-10: **iPhone 6.5" screenshots (0 of 10)**, **iPad 13" screenshots (0 of 10)**,
+     and the **Guideline 2.1 screen recording**, which is not attached (App Review
+     Information → Attachment is empty). The iOS 27 guardrail that used to block these is
+     fixed (item 5). **The iPad set is now shot** (next bullet) and needs uploading. The
+     iPhone set and the recording still need the iPhone 15 Pro Max, which is the one
+     Apple-Intelligence-eligible device in the house, because both want a real Personal
+     Voice and a real microphone.
+   - **The iPad set is shot: three frames, 2026-09-11.** `Corpospeak/AppStore/screenshots/en-US`
+     holds `1-translated.png`, `2-listening.png` and `4-speaking.png`, each 2752 × 2064,
+     landscape, from a **Release** build on an iPad Pro 13-inch (M5) simulator, iOS 26.5.
+     They are in the repo and still have to be uploaded to App Store Connect.
+     What unblocked it was seeding the utterance through a launch argument
+     (`Corpospeak/DemoOptions.swift`), the Brushwise pattern: read from `UserDefaults`, **not**
+     DEBUG-gated so a Release build honours it, feeding `handleUtterance()` rather than drawing
+     anything. Only the recogniser is skipped; the rewrite, the panels, the status pill and the
+     speech all run for real, and with no argument passed nothing about the app changes.
+     `RELEASING.md`'s *Screenshots* section has the steps.
+     Why the recogniser has to be skipped, measured 2026-09-10 and unchanged:
      - **On-device speech recognition does not work in the Simulator.** The microphone path
        is fine — the Mac's speakers playing `say` drive the app's level meter well above
        ambient — but `localspeechrecognition` fails to build a recognizer on every restart
@@ -39,21 +44,18 @@
        en_US ASR model ships as `UC_SIRI_ASR_ASSISTANT_…_Cryptex.dmg`, and the simulator
        never mounts cryptexes, so `mini.json` is unreachable. `SpeechListener` sets
        `requiresOnDeviceRecognition = true` (Services/SpeechListener.swift:235) and will not
-       fall back, by design. So no transcript is possible there, whoever is talking — frames
-       1 and 4 need a transcript, and frame 2's `Listening… pause to send` pill needs one too
-       (`silenceDeadline` is only set when a recognition result arrives).
-     - **Personal Voice does not exist on a simulator**, so frame 3's **Your Voice** section
-       never renders (`offersPersonalVoice` is false for `.unsupported`), and Kokoro is gated
-       off on the 26.4+ iOS line. The voice menu there shows **System Voices** alone, which is
-       the opposite of what that frame is meant to show.
+       fall back, by design. So no transcript is possible there, whoever is talking.
      - **The rewrite itself works.** `SystemLanguageModel.default.availability` reports
        `available` inside that simulator, verified with a probe binary run through
-       `simctl spawn`. Foundation Models is not the blocker; ASR is.
-     So the iPad set needs either a real Apple-Intelligence-eligible 13-inch iPad, or a way to
-     drive the loop without the microphone — the Brushwise pattern of launch arguments that
-     seed content and add no UI would let a simulator produce frames 1, 2 and 4. Frame 3 would
-     still need real hardware with a Personal Voice on it. Not done here: this was a capture
-     task and changing the app was out of scope.
+       `simctl spawn`. Foundation Models was never the blocker; ASR was.
+   - **There is no iPad frame 3, and there should not be one.** It wanted the voice menu with
+     the user's Personal Voice at the top, which is the app's best feature. No simulator has a
+     Personal Voice (`offersPersonalVoice` is false while the status is `.unsupported`) and
+     Kokoro is switched off on the 26.4+ iOS line, so the menu there lists Apple's system
+     voices alone — the opposite of what the frame is for. Faking the row would advertise
+     something the app cannot do on the reviewer's device. App Store Connect accepts three, so
+     the iPad set ships as three; the voice frame belongs to the iPhone set, shot on the
+     iPhone 15 Pro Max where a real Personal Voice exists.
    - **Build 5 has never been uploaded.** `project.yml` says 1.0 (5) and the branch
      `claude/ship-build-5` carries the bump plus *Explain the app before asking for the
      microphone*. App Store Connect has builds 3 and 4 only. Decide before submitting

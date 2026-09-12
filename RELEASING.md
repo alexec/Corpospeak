@@ -159,3 +159,93 @@ be shown.
 | Privacy policy URL | https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md |
 | Export compliance | `ITSAppUsesNonExemptEncryption` is `false` in Info.plist, so no questionnaire |
 | Minimum macOS | 26.0 |
+
+## Screenshots
+
+App Store Connect wants a 13-inch iPad set and a 6.5-inch iPhone set. The iPad set lives in
+`Corpospeak/AppStore/screenshots/en-US` at **2752 × 2064**, landscape, shot from a **Release**
+build on an **iPad Pro 13-inch (M5)** simulator.
+
+### Why a launch argument is involved
+
+A simulator cannot hear anything. On-device speech recognition never starts there: the en_US
+model ships as a cryptex disk image the simulator does not mount, so `localspeechrecognition`
+fails to build a recogniser on every restart, and `SpeechListener` requires on-device
+recognition and will not fall back. No transcript is possible whoever speaks into the Mac.
+Hardware is no answer either: the paired iPad (A16) cannot run Apple Intelligence and its
+screen fits no App Store slot.
+
+So the utterance is seeded instead, through `Corpospeak/DemoOptions.swift`. `-demoUtterance`
+arrives in the `UserDefaults` argument domain and goes into `handleUtterance()` as though the
+recogniser had heard it. It is deliberately **not** `#if DEBUG`-gated, because these frames have
+to come from a Release build. Only the recogniser is skipped: the rewrite, the panels, the
+status pill and the speech all run for real, and the file draws no UI of its own, so the frame
+shows the shipping app. Pass no argument and nothing about the app changes.
+
+### Shooting the set
+
+```bash
+UDID=<the iPad Pro 13-inch (M5) simulator>
+xcodebuild -project Corpospeak.xcodeproj -scheme Corpospeak -configuration Release \
+  -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath build/screenshots build
+xcrun simctl install "$UDID" build/screenshots/Build/Products/Release-iphonesimulator/Corpospeak.app
+```
+
+1. Launch once with no argument and walk the first run: **Start listening**, then Allow for
+   Speech Recognition and Allow for the Microphone. Both stick in the app's container, so every
+   later launch opens straight into the app.
+2. Rotate to landscape. Several simulators can be up at once, so make the right window the main
+   one before touching the menu, or the rotation lands on someone else's device:
+
+   ```bash
+   osascript -e 'tell application "System Events" to tell process "Simulator"
+     set w to first window whose name contains "iPad Pro 13-inch"
+     perform action "AXRaise" of w
+     set value of attribute "AXMain" of w to true
+     click menu item "Rotate Left" of menu 1 of menu bar item "Device" of menu bar 1
+   end tell'
+   ```
+
+3. Freeze the status bar:
+
+   ```bash
+   xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState discharging \
+     --batteryLevel 100 --wifiBars 3 --cellularMode notSupported
+   ```
+
+4. Launch with the sentence and capture once the screen is where you want it:
+
+   ```bash
+   xcrun simctl launch "$UDID" com.alexcollins.CorpSpeak -demoUtterance "Nobody read the document before the meeting, so we wasted an hour."
+   xcrun simctl io "$UDID" screenshot frame.png
+   ```
+
+   `-demoDelay` (seconds, 2 by default) sets how long the app waits before the sentence lands,
+   which is how the empty state gets photographed before the reply arrives.
+
+5. `simctl io screenshot` always writes the portrait framebuffer, whatever way round the device
+   is, so turn the file the right way up and check it:
+
+   ```bash
+   sips -r 270 frame.png
+   sips -g pixelWidth -g pixelHeight frame.png   # must read 2752 × 2064
+   ```
+
+The rewrite comes from the on-device model, so it is different every run. Shoot a few and keep
+the funniest. Give it 30–60 seconds: the model is slower in a simulator than on a phone.
+
+### The frames
+
+| File | What it shows |
+| --- | --- |
+| `1-translated.png` | A finished rewrite, with the plain sentence above it and the pill back on Listening. |
+| `2-listening.png` | The empty state: the level meter and *Say something in plain English.* |
+| `4-speaking.png` | The rewrite being read back, the pill offering Stop. |
+
+**There is no frame 3, by design.** It was to be the voice menu with the user's Personal Voice
+at the top of it. No simulator has a Personal Voice (`offersPersonalVoice` is false while the
+status is `.unsupported`), and Kokoro is switched off on the iOS 26.4+ line, so the menu there
+lists Apple's system voices alone, which is the opposite of what that frame is for. Faking the
+row would put something in the App Store that the app cannot do on the reviewer's device. App
+Store Connect accepts three screenshots, so the iPad set ships as three, and the voice frame
+goes in the iPhone set, shot on the iPhone 15 Pro Max where a real Personal Voice exists.
