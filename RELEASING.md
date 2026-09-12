@@ -146,7 +146,7 @@ be shown.
 > developer. Voices are Apple's built-in voices, the user's own Personal Voice, or the
 > Apache-2.0 licensed Kokoro model.
 >
-> Privacy policy: https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md
+> Privacy policy: https://www.alexecollins.com/corpospeak/privacy.html
 
 ## Listing metadata
 
@@ -156,7 +156,8 @@ be shown.
 | Category | Entertainment |
 | Price | Free |
 | Privacy | Data Not Collected |
-| Privacy policy URL | https://github.com/alexec/Corpospeak/blob/main/PRIVACY.md |
+| Privacy policy URL | https://www.alexecollins.com/corpospeak/privacy.html |
+| Support URL | https://www.alexecollins.com/corpospeak/support.html |
 | Export compliance | `ITSAppUsesNonExemptEncryption` is `false` in Info.plist, so no questionnaire |
 | Minimum macOS | 26.0 |
 
