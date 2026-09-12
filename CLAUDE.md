@@ -115,6 +115,14 @@ SpeechListener → CorpospeakModel → Translator → CorpospeakModel → Speake
   it with `xcrun devicectl device process launch --console` (the phone must stay unlocked).
 - **`Corpospeak/Views/ContentView.swift`** — the single window; `compact` (screen width < 600)
   tightens spacing/type for phones and narrow iPad splits.
+- **`Corpospeak/DemoOptions.swift`** — the launch arguments that seed an utterance, so App
+  Store frames can be shot on a simulator. Read from `UserDefaults`, deliberately **not**
+  `#if DEBUG`-gated, because the frames have to come from a Release build. `-demoUtterance`
+  pushes a sentence into `handleUtterance()` as though the recogniser had heard it; everything
+  after that — the rewrite, the panels, the pill, the speech — runs for real, and the file
+  draws no UI. With no argument passed nothing about the app changes. It exists because no
+  simulator can run on-device speech recognition; `RELEASING.md`'s *Screenshots* section has
+  the why and the steps.
 - **`Corpospeak/Platform.swift`** — the few things that differ between macOS/iOS/iPadOS (the
   Settings app's name, opening Personal Voice settings, clipboard access) are isolated here
   rather than scattered behind `#if os()` checks elsewhere.

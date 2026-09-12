@@ -67,6 +67,7 @@ final class CorpospeakModel {
         guard !needsFirstRun else { return }
         await listener.start()
         refreshPhase()
+        seedDemoUtteranceIfAsked()
     }
 
     /// The first screen's one button: tell the system what we need, in the order the user meets
@@ -78,6 +79,17 @@ final class CorpospeakModel {
         needsFirstRun = false
         await listener.start()
         refreshPhase()
+        seedDemoUtteranceIfAsked()
+    }
+
+    /// Pushes `-demoUtterance` through the pipeline as though the recogniser had heard it, so a
+    /// screenshot can be taken where speech recognition cannot run. See `DemoOptions`.
+    private func seedDemoUtteranceIfAsked() {
+        guard let text = DemoOptions.current.utterance, !text.isEmpty else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(DemoOptions.current.delay))
+            self?.handleUtterance(text)
+        }
     }
 
     #if DEBUG
