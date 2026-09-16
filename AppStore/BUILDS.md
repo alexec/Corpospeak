@@ -5,19 +5,26 @@ only record of what went into a binary on the App Store is a `build-N` tag on th
 was cut from. `scripts/ship.sh upload` now writes that tag itself; it used to be a line of
 prose in `.claude/ship-it.yml`, which was honoured once and then forgotten.
 
-This file covers the builds that predate the automatic tag, and says for each one **how well
-it is actually known**. The distinction matters: an earlier session identified a build's
-commit with `git rev-list -1 --before=<upload time>` and reported it as fact. The tag existed
-and pointed somewhere else. The conclusion happened to survive. **A tag is a record, a
-timestamp is a guess** — so nothing below is written as fact unless something was checked.
+Build 5 is the first one tagged automatically. Everything before it predates that, and this
+file says for each one **how well it is actually known**. The distinction matters: an earlier
+session identified a build's commit with `git rev-list -1 --before=<upload time>` and reported
+it as fact. The tag existed and pointed somewhere else. The conclusion happened to survive. **A
+tag is a record, a timestamp is a guess** — so nothing below is written as fact unless
+something was checked.
 
 | Build | Commit | Reached App Store Connect? | How the commit is known |
 |-------|--------|---------------------------|-------------------------|
 | 1 | not established | Yes — uploaded 4 Sep, **attached to the live macOS 1.0** | No tag, no archive. Upper bound only — see below. |
 | 2 | `422660d` (inferred) | Uploaded, never attached to a version | The commit that first set `CFBundleVersion: "2"`. |
 | 3 | `a270a23` (inferred) | Uploaded, never attached | The commit that set `CFBundleVersion: "3"`. |
-| 4 | `987620a` | Uploaded, attached to iOS 1.0, awaiting submission | **Tagged `build-4`, and confirmed against the uploaded binary.** See below. |
-| 5 | `87ad550` (inferred) | **Never uploaded** | The commit that set `CFBundleVersion: "5"`. `project.yml` sits at 5 today. |
+| 4 | `987620a` | Uploaded, attached to iOS 1.0, superseded by build 5 | **Tagged `build-4`, and confirmed against the uploaded binary.** See below. |
+| 5 | `cce1024` | **Uploaded for iOS, 16 Sep 2026** | **Tagged `build-5` by `ship.sh upload` itself.** The first build the convention actually caught. |
+
+Build 5 is the one this file was written for. `ship.sh archive` recorded the commit it built
+from, `ship.sh upload` tagged it on success and pushed the tag, and nobody had to remember to
+do it. Note the commit is `cce1024`, not the `87ad550` that merely set `CFBundleVersion: "5"`.
+That is exactly the difference between a tag and an inference, and why builds 2, 3 and 5's
+bump commits were never good enough as answers.
 
 Upload and attachment status comes from `BACKLOG.md` item 3, written from App Store Connect
 on 2026-09-10; the commits come from this repo. The two are separate claims and only the

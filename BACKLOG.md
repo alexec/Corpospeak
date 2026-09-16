@@ -56,11 +56,16 @@
      something the app cannot do on the reviewer's device. App Store Connect accepts three, so
      the iPad set ships as three; the voice frame belongs to the iPhone set, shot on the
      iPhone 15 Pro Max where a real Personal Voice exists.
-   - **Build 5 has never been uploaded.** `project.yml` says 1.0 (5) and the branch
-     `claude/ship-build-5` carries the bump plus *Explain the app before asking for the
-     microphone*. App Store Connect has builds 3 and 4 only. Decide before submitting
-     whether iOS 1.0 goes out as build 4, which is attached now and does not have the
-     permission explanation, or as build 5, which needs an archive and upload first.
+   - **~~Build 5 has never been uploaded.~~ Uploaded 16 September 2026, tagged `build-5` at
+     `cce1024`.** Alex chose build 5 over build 4. Two things in that old wording were already
+     stale when it was read: the `claude/ship-build-5` branch no longer existed, because both
+     its commits had been merged, and `origin/main` was already at `CFBundleVersion: "5"`, so
+     build 5 cost an archive and an upload and no hunting. The six open PRs were merged first,
+     deliberately: a build number can only be used once, so the archive freezes `main`, and
+     cutting build 5 before they landed would have shipped an app with no Settings screen, no
+     licences and no privacy manifest. What is in the binary is in `AppStore/BUILDS.md`.
+     Still outstanding before iOS 1.0 can be submitted: the iPhone 6.5" screenshots and the
+     Guideline 2.1 recording, both above, and both wanting the iPhone 15 Pro Max.
    - **A new macOS version is still outstanding.** Create 1.0.1 (or 1.1), archive and
      upload build 4 or later for macOS, attach it, submit. The review notes in
      `RELEASING.md` §4 cleared review once, but they now say the app has no third-party
