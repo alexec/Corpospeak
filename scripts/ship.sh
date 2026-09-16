@@ -76,8 +76,9 @@ cmd_preflight() {
   [ -n "$last" ] && echo "last bump  : $last"
 
   say "Build record"
-  local untagged=""
-  for n in $(seq 1 "$(current_build)"); do
+  local untagged="" highest; highest="$(current_build)"
+  [[ "$highest" =~ ^[0-9]+$ ]] || highest=0
+  for n in $(seq 1 "$highest"); do
     git rev-parse -q --verify "refs/tags/build-$n" >/dev/null || untagged="$untagged $n"
   done
   if [ -n "$untagged" ]; then
@@ -144,10 +145,11 @@ cmd_archive() {
   [ "$built" = "$(current_build)" ] || fail "archive contains build $built but project.yml says $(current_build)"
 
   # Which commit this came out of, written down now rather than worked out later. HEAD can
-  # move between archiving and uploading, so upload reads this file and not HEAD.
+  # move between archiving and uploading, and so can project.yml, so upload reads this file
+  # rather than asking the working tree what it currently says.
   local dirty="clean"
   [ -n "$(git status --porcelain)" ] && dirty="DIRTY"
-  printf '%s %s %s\n' "$(git rev-parse HEAD)" "$dirty" "$built" > "$archive.commit"
+  printf '%s %s %s %s\n' "$(git rev-parse HEAD)" "$dirty" "$built" "$(current_version)" > "$archive.commit"
   [ "$dirty" = "clean" ] || echo "warning: archived from a DIRTY tree — the tag will say so, but the build is not reproducible"
   echo "archived $(current_version) ($built) for $platform from $(git rev-parse --short HEAD) ($dirty)"
 }
@@ -155,7 +157,7 @@ cmd_archive() {
 # The record of what is in a build on sale. Annotated so it carries who, when and which
 # platform; never moved once written, because a tag that moves is not a record.
 tag_build() {
-  local build="$1" commit="$2" dirty="$3" platform="$4"
+  local build="$1" commit="$2" dirty="$3" platform="$4" version="$5"
   local tag="build-$build"
 
   if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
@@ -167,11 +169,16 @@ tag_build() {
     fail "tag $tag already points at $(git rev-parse --short "$existing") but this upload came from $(git rev-parse --short "$commit"); two different builds cannot share a number — check what was really uploaded before touching the tag"
   fi
 
-  git tag -a "$tag" "$commit" -m "$(current_version) ($build) uploaded for $platform on $(date -u '+%Y-%m-%d %H:%M UTC') from a $dirty tree"
+  # The version comes from the archive record, not from project.yml: `bump --version` between
+  # archiving and uploading would otherwise write a version into the tag that was never built.
+  git tag -a "$tag" "$commit" -m "$version ($build) uploaded for $platform on $(date -u '+%Y-%m-%d %H:%M UTC') from a $dirty tree"
   echo "tagged $tag at $(git rev-parse --short "$commit")"
 
   # A tag only on this Mac is the same gap in a smaller form. Push it when the commit is
   # already public; never push a tag that would drag unpublished commits along with it.
+  # Fetch first: against a stale origin/main a commit that IS public reads as private, and
+  # the tag would sit here unpushed for no reason.
+  git fetch --quiet origin main 2>/dev/null || true
   if git merge-base --is-ancestor "$commit" origin/main 2>/dev/null; then
     git push --quiet origin "$tag" 2>/dev/null \
       && echo "pushed $tag to origin" \
@@ -210,8 +217,8 @@ cmd_upload() {
   echo "uploaded $(current_version) ($(current_build)) for $platform; Apple processes it in a few minutes"
 
   if [ -f "$archive.commit" ]; then
-    read -r commit dirty built < "$archive.commit"
-    tag_build "$built" "$commit" "$dirty" "$platform"
+    read -r commit dirty built version < "$archive.commit"
+    tag_build "$built" "$commit" "$dirty" "$platform" "$version"
   else
     echo "warning: no $archive.commit — this archive predates the record, so nothing was tagged."
     echo "         Work out which commit it was cut from and 'git tag -a build-$(current_build) <commit>' by hand."
