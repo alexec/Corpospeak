@@ -126,10 +126,18 @@
   Done 2026-09-11: `Corpospeak/Views/SettingsView.swift`, opened by the gear in the top
   chrome. The middle holds the voice, which is the one thing the app persists, so the
   entry point ships rather than being Debug-gated.
-- [ ] ASR-attribution · 2026-09-10 · repo root · nothing in the app or the repo carries the
+- [x] ASR-attribution · 2026-09-10 · repo root · nothing in the app or the repo carries the
   Apache-2.0 licence text for Kokoro or FluidAudio. Apache 2.0 §4 asks for it with any
   distribution. There is now a Settings screen to put an acknowledgements row in
   (`Corpospeak/Views/SettingsView.swift`, 2026-09-11), below the voice section.
+  Done 2026-09-15: `Corpospeak/THIRD-PARTY-NOTICES.md`, bundled into the app and shown by
+  Settings → Acknowledgements, which reads it out of the bundle so there is one copy and no
+  network call. Scope turned out wider than "Kokoro or FluidAudio": the symbol table of the
+  built app shows FluidAudio links in **whole**, diarizer included, so fastcluster, VBx and
+  NemoTextProcessing are in the binary too. fastcluster is the one that actually forced this —
+  it is BSD, and its terms require binary redistributions to reproduce its copyright notice in
+  "the documentation and/or other materials provided with the distribution". An App Store app
+  is exactly that, and there was nowhere it appeared.
 - [x] FR-voicehelp-popover · 2026-09-11 · `Corpospeak/Views/ContentView.swift:743` · on
   iPhone the voice help popover renders entirely off the top of the screen. Only its arrow
   shows, just above the `?` button. The button sits at about y=97pt and the popover asks

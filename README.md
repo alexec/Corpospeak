@@ -54,7 +54,16 @@ No network connections, no data collected, nothing retained. See
 
 The code is MIT — see [LICENSE](LICENSE).
 
-That covers the source only. It does **not** cover this app's artwork: the app
+The app also ships open-source work by other people — Kokoro's weights, and the
+FluidAudio library that runs them, along with what FluidAudio itself carries.
+Their licences are reproduced in
+[Corpospeak/THIRD-PARTY-NOTICES.md](Corpospeak/THIRD-PARTY-NOTICES.md), which is
+bundled into the app and shown under Settings → Acknowledgements. It lives inside
+`Corpospeak/` rather than at the repo root precisely so that it is bundled: most
+of those licences ask anyone shipping the code in binary form to reproduce them,
+and a file only a reader of the source can find would not do that.
+
+The MIT licence covers this app's source only. It does **not** cover this app's artwork: the app
 icon (`Corpospeak/Assets.xcassets/AppIcon.appiconset`) and the screenshot in
 `docs/`, which remain © 2026 Alex Collins, all rights reserved. Nor does it
 grant any right to the name “Corpospeak” — a trademark is a separate thing from
