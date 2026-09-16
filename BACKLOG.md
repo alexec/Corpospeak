@@ -130,7 +130,7 @@
   Apache-2.0 licence text for Kokoro or FluidAudio. Apache 2.0 §4 asks for it with any
   distribution. There is now a Settings screen to put an acknowledgements row in
   (`Corpospeak/Views/SettingsView.swift`, 2026-09-11), below the voice section.
-- [ ] FR-voicehelp-popover · 2026-09-11 · `Corpospeak/Views/ContentView.swift:743` · on
+- [x] FR-voicehelp-popover · 2026-09-11 · `Corpospeak/Views/ContentView.swift:743` · on
   iPhone the voice help popover renders entirely off the top of the screen. Only its arrow
   shows, just above the `?` button. The button sits at about y=97pt and the popover asks
   for `arrowEdge: .bottom`, which places it above the anchor, where there is no room.
@@ -141,6 +141,14 @@
   removing that link neither caused it nor hid it. The fix is probably `arrowEdge: .top`,
   or a sheet with a detent at compact widths, and it wants checking on the Mac too, where
   the same view is a real popover and may well be fine.
+  Done 2026-09-15: a compact size class now gets a sheet (`VoiceHelpSheet`, the same dark
+  NavigationStack-and-Done shape as the Settings sheets), a regular one keeps the popover,
+  hung below the button with `arrowEdge: .top`. The branch reads
+  `@Environment(\.horizontalSizeClass)`, not the screen width the rest of the view uses:
+  that width starts at its 720pt default and only becomes real a frame later, so branching
+  on it presented the popover first and then dropped it when the branch flipped — nothing
+  appeared at all. Verified by screenshot on both, iPhone 17 Pro and the Corpospeak Verify
+  iPad, with `isShowingHelp` temporarily seeded true.
 
 ## Privacy audit
 
