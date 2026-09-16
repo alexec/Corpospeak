@@ -43,7 +43,11 @@ targets:
       - package: FluidAudio
     sources:
       - path: Corpospeak
-        excludes: [KokoroModels]
+        # AppStore/ holds the iPad store frames. Without this exclude everything under
+        # Corpospeak/ that Xcode doesn't recognise as source becomes a resource, so 2.5MB of
+        # screenshots of the app were being copied into every build of the app, on every
+        # platform. They are listing material, not app content.
+        excludes: [KokoroModels, AppStore]
       # A folder reference, so the .mlmodelc bundles are copied into the app exactly as they
       # are. Anything else lets Xcode's Core ML build step rewrite already-compiled models.
       - path: Corpospeak/KokoroModels
