@@ -24,9 +24,11 @@ stages: [survey, land, bump, archive-upload, tidy-build, report]
 # is the part only Alex can do.
 
 listing:
-  # App Store Connect points at the website, not at this repo: the repo goes private
-  # later (T323) and a GitHub URL would become a dead end. PRIVACY.md and SUPPORT.md
-  # here are the source the two pages are written from. Same shape in every one of the apps.
+  # These pages live on the site, not in the repository. They used to point at GitHub's
+  # rendering of PRIVACY.md and SUPPORT.md, which dies the moment the repo goes private —
+  # and a live app whose privacy policy 404s is a 5.1.1 rejection. Same shape in every
+  # one of the apps: https://www.alexecollins.com/<app-name>/<page>.html, the www form
+  # because the bare domain answers 301.
   privacy_url: https://www.alexecollins.com/corpospeak/privacy.html
   support_url: https://www.alexecollins.com/corpospeak/support.html
 
@@ -70,5 +72,6 @@ quirks:
   - A build installed with devicectl on an ineligible device (the paired A16 iPad) runs but
     can't translate — expected, not a regression.
     `scripts/check_apple_intelligence_eligible.py` says which devices count.
-  - Rebuilding a submitted build: `git worktree add <dir> build-N`, `xcodegen generate`,
+  - >-
+    Rebuilding a submitted build: `git worktree add <dir> build-N`, `xcodegen generate`,
     then a Release build.
