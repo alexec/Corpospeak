@@ -9,6 +9,7 @@ struct SettingsView: View {
     let model: CorpospeakModel
     @Environment(\.dismiss) private var dismiss
     @State private var isShowingHowItWorks = false
+    @State private var isShowingNotices = false
 
     var body: some View {
         NavigationStack {
@@ -24,6 +25,12 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.menu)
+                }
+
+                Section {
+                    Button("Acknowledgements") { isShowingNotices = true }
+                } footer: {
+                    Text("The open-source work Corpospeak speaks with, and the licences it is offered under.")
                 }
 
                 #if DEBUG
@@ -48,6 +55,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $isShowingHowItWorks) {
             HowItWorks()
+        }
+        .sheet(isPresented: $isShowingNotices) {
+            Acknowledgements()
         }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 320)
@@ -100,4 +110,67 @@ private struct HowItWorks: View {
         .frame(minWidth: 420, minHeight: 320)
         #endif
     }
+}
+
+/// The licences for the open-source work inside the app — Kokoro's weights, FluidAudio, and
+/// what FluidAudio itself carries. Most of those licences ask anyone shipping the code in
+/// binary form to reproduce them, and until now nothing in the app did.
+///
+/// The text is read out of the bundle rather than written into Swift, so `THIRD-PARTY-NOTICES.md`
+/// is the single copy and cannot drift from the one in the repository. Reading it is also why
+/// this screen needs no network: the app makes no connections at all, and a licence link to the
+/// web would have been the first.
+private struct Acknowledgements: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                // Monospaced because most of what follows is verbatim licence text, hard-wrapped
+                // by whoever wrote it; 11pt is what keeps those lines from wrapping twice on a
+                // phone. The prose above them is left unwrapped in the file so it reflows.
+                Text(Self.notices)
+                    .font(.system(size: 11, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: 560, alignment: .leading)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 28)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Color.black.ignoresSafeArea())
+            .navigationTitle("Acknowledgements")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        #if os(macOS)
+        .frame(minWidth: 480, minHeight: 420)
+        #endif
+    }
+
+    /// Read once for the life of the process, not once per `body`. Bundled text cannot change
+    /// while the app runs, and a computed property here would have gone back to disk for 16KB
+    /// on every view update — scrolling included.
+    ///
+    /// If this ever reads the fallback, the file was dropped from the bundle — which is a
+    /// licence problem, not a cosmetic one, so it says so rather than showing an empty page.
+    private static let notices: String = {
+        guard let url = Bundle.main.url(forResource: "THIRD-PARTY-NOTICES", withExtension: "md"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else {
+            return """
+                The notices file is missing from this build.
+
+                Corpospeak ships Kokoro 82M and FluidAudio, both Apache-2.0, and FluidAudio \
+                carries fastcluster (BSD), VBx and NemoTextProcessing. The full text is in \
+                THIRD-PARTY-NOTICES.md in the source repository.
+                """
+        }
+        return text
+    }()
 }
