@@ -21,9 +21,12 @@ struct CorpospeakApp: App {
         .windowStyle(.plain)
         .defaultSize(width: 720, height: 480)
         .commands {
-            // The default Help item opens an empty help book; point it at the README instead.
+            // The default Help item opens an empty help book. It used to point at the repo's
+            // README, which is the wrong place twice over: the repo may go private, and a
+            // README is written for someone reading the source, not someone using the app.
+            // This is the same support page the App Store record points at.
             CommandGroup(replacing: .help) {
-                Link("Corpospeak Help", destination: URL(string: "https://github.com/alexec/Corpospeak#readme")!)
+                Link("Corpospeak Help", destination: URL(string: "https://www.alexecollins.com/corpospeak/support.html")!)
             }
         }
         #endif
