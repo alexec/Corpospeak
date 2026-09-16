@@ -33,6 +33,9 @@ git:
   repo: true
   workflow: branch-and-pr         # branch `claude/ship-build-N`, commit the bump, open the PR
   tag_bump_commit: build-N        # archives aren't kept; App Review may need an exact rebuild
+                                  # `ship.sh upload` writes this tag itself now — it was prose
+                                  # here for four builds and got honoured once. What each build
+                                  # contains, and how well that is known: AppStore/BUILDS.md
 
 version:
   file: project.yml

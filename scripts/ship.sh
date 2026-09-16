@@ -6,9 +6,15 @@
 #   ship.sh archive <ios|mac>         Release archive for one platform into build/
 #   ship.sh upload <ios|mac>          export that archive straight to App Store Connect
 #   ship.sh all [--ios-only]          bump, then archive + upload each platform
+#   ship.sh builds                    what commit each uploaded build was cut from
 #
 # Every step is safe to re-run. Archives take several minutes each, so run them one at a
 # time (or `all` in the background) and read build/ship-*.log if anything fails.
+#
+# Archives are not kept — they are hundreds of megabytes and build/ is ignored — so the only
+# record of what is inside a build on sale is a `build-N` tag. `upload` writes that tag
+# itself, because the convention was written down in .claude/ship-it.yml and then honoured
+# exactly once: macOS 1.0 (1) is live and cannot be reproduced from this repo.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -69,6 +75,18 @@ cmd_preflight() {
   local last; last="$(git log -1 --format='%h %s (%as)' --grep='^Bump build' || true)"
   [ -n "$last" ] && echo "last bump  : $last"
 
+  say "Build record"
+  local untagged=""
+  for n in $(seq 1 "$(current_build)"); do
+    git rev-parse -q --verify "refs/tags/build-$n" >/dev/null || untagged="$untagged $n"
+  done
+  if [ -n "$untagged" ]; then
+    echo "no build-N tag for:$untagged"
+    echo "(only builds that actually reached App Store Connect need one — see AppStore/BUILDS.md)"
+  else
+    echo "every build up to $(current_build) is tagged"
+  fi
+
   say "Changes since the last bump"
   local since; since="$(git log -1 --format=%H --grep='^Bump build' || true)"
   if [ -n "$since" ]; then
@@ -124,7 +142,55 @@ cmd_archive() {
   fi
   local built; built="$("$PLIST_BUDDY" -c 'Print :ApplicationProperties:CFBundleVersion' "$archive/Info.plist")"
   [ "$built" = "$(current_build)" ] || fail "archive contains build $built but project.yml says $(current_build)"
-  echo "archived $(current_version) ($built) for $platform"
+
+  # Which commit this came out of, written down now rather than worked out later. HEAD can
+  # move between archiving and uploading, so upload reads this file and not HEAD.
+  local dirty="clean"
+  [ -n "$(git status --porcelain)" ] && dirty="DIRTY"
+  printf '%s %s %s\n' "$(git rev-parse HEAD)" "$dirty" "$built" > "$archive.commit"
+  [ "$dirty" = "clean" ] || echo "warning: archived from a DIRTY tree — the tag will say so, but the build is not reproducible"
+  echo "archived $(current_version) ($built) for $platform from $(git rev-parse --short HEAD) ($dirty)"
+}
+
+# The record of what is in a build on sale. Annotated so it carries who, when and which
+# platform; never moved once written, because a tag that moves is not a record.
+tag_build() {
+  local build="$1" commit="$2" dirty="$3" platform="$4"
+  local tag="build-$build"
+
+  if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+    local existing; existing="$(git rev-list -n1 "$tag")"
+    if [ "$existing" = "$commit" ]; then
+      echo "tag $tag already records $(git rev-parse --short "$commit")"
+      return 0
+    fi
+    fail "tag $tag already points at $(git rev-parse --short "$existing") but this upload came from $(git rev-parse --short "$commit"); two different builds cannot share a number — check what was really uploaded before touching the tag"
+  fi
+
+  git tag -a "$tag" "$commit" -m "$(current_version) ($build) uploaded for $platform on $(date -u '+%Y-%m-%d %H:%M UTC') from a $dirty tree"
+  echo "tagged $tag at $(git rev-parse --short "$commit")"
+
+  # A tag only on this Mac is the same gap in a smaller form. Push it when the commit is
+  # already public; never push a tag that would drag unpublished commits along with it.
+  if git merge-base --is-ancestor "$commit" origin/main 2>/dev/null; then
+    git push --quiet origin "$tag" 2>/dev/null \
+      && echo "pushed $tag to origin" \
+      || echo "warning: could not push $tag — push it by hand so the record is not only on this Mac"
+  else
+    echo "warning: $commit is not on origin/main, so $tag stays local; push the commit, then 'git push origin $tag'"
+  fi
+}
+
+cmd_builds() {
+  say "Uploaded builds"
+  local found=0
+  for tag in $(git tag -l 'build-*' | sort -t- -k2 -n); do
+    found=1
+    printf '  %-9s %s  %s\n' "$tag" "$(git rev-parse --short "$tag"^{commit})" "$(git tag -l --format='%(contents:subject)' "$tag")"
+  done
+  [ "$found" = "1" ] || echo "  none — no build has been tagged"
+  echo
+  echo "Builds with no tag are recorded, with how well they are known, in AppStore/BUILDS.md."
 }
 
 cmd_upload() {
@@ -142,6 +208,14 @@ cmd_upload() {
   fi
   grep -E '\*\* EXPORT' "$log" || true
   echo "uploaded $(current_version) ($(current_build)) for $platform; Apple processes it in a few minutes"
+
+  if [ -f "$archive.commit" ]; then
+    read -r commit dirty built < "$archive.commit"
+    tag_build "$built" "$commit" "$dirty" "$platform"
+  else
+    echo "warning: no $archive.commit — this archive predates the record, so nothing was tagged."
+    echo "         Work out which commit it was cut from and 'git tag -a build-$(current_build) <commit>' by hand."
+  fi
 }
 
 cmd_all() {
@@ -159,5 +233,6 @@ case "${1:-}" in
   archive)   shift; cmd_archive "$@" ;;
   upload)    shift; cmd_upload "$@" ;;
   all)       shift; cmd_all "$@" ;;
-  *) sed -n '2,12p' "$0"; exit 1 ;;
+  builds)    shift; cmd_builds "$@" ;;
+  *) sed -n '2,13p' "$0"; exit 1 ;;
 esac
