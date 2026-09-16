@@ -28,7 +28,7 @@ reply.
 - **"Apple Intelligence is unavailable."** The rewrite runs on Apple's on-device model, so it
   needs an Apple silicon Mac, an iPhone 15 Pro or later, or an iPad with an M1 or A17 Pro
   chip or later, with Apple Intelligence turned on in Settings.
-- **It will not listen.** Corpospeak only ever recognizes speech on the device. If your
+- **It will not listen.** Corpospeak only ever recognises speech on the device. If your
   language has not been downloaded, it tells you and stops rather than sending your voice to
   Apple's servers.
 - **Your Personal Voice is not in the menu.** Record one in Accessibility → Personal Voice,

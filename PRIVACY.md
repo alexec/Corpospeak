@@ -13,7 +13,7 @@ holds the audio and the transcript in memory while it is working on them and nev
 to disk. The one thing it saves is the identifier of the voice you picked, so it uses the same
 one next time.
 
-Corpospeak only ever recognizes speech on your device. If your device cannot recognize your
+Corpospeak only ever recognises speech on your device. If your device cannot recognise your
 language by itself, the app tells you so and does not listen. It never falls back to Apple's
 servers.
 
