@@ -18,6 +18,11 @@ struct ContentView: View {
                     Spacer()
                     VoiceMenu(model: model, compact: compact)
                     VoiceHelpButton(model: model)
+                    // Hidden during first run: the primer's words are already on screen, and
+                    // nothing in the chrome should read as a way past it.
+                    if !model.needsFirstRun {
+                        SettingsButton(model: model)
+                    }
                 }
                 .padding(.top, 8)
 
@@ -730,10 +735,14 @@ private struct PersonalVoiceNudge: View {
 
 private struct VoiceHelpButton: View {
     let model: CorpospeakModel
+    // Deliberately the size class rather than the measured width the rest of the screen uses:
+    // that width starts at its default and only becomes real a frame later, and switching
+    // presentation styles under an open popover drops it.
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var isShowingHelp = false
 
     var body: some View {
-        Button {
+        let button = Button {
             isShowingHelp.toggle()
         } label: {
             Image(systemName: "questionmark.circle")
@@ -746,9 +755,47 @@ private struct VoiceHelpButton: View {
         .buttonStyle(.plain)
         .help("About the voice")
         .accessibilityLabel("About the voice")
-        .popover(isPresented: $isShowingHelp, arrowEdge: .bottom) {
-            VoiceHelp(speaker: model.speaker)
-                .presentationCompactAdaptation(.popover)
+
+        // This button sits in the top row, so a popover hung above it has nowhere to go: on a
+        // phone it rendered off the top of the screen and all you saw was the arrow. Phones get
+        // the sheet the rest of the app uses; wider layouts keep the popover, below the button.
+        if sizeClass == .compact {
+            button.sheet(isPresented: $isShowingHelp) {
+                VoiceHelpSheet(speaker: model.speaker)
+            }
+        } else {
+            button.popover(isPresented: $isShowingHelp, arrowEdge: .top) {
+                VoiceHelp(speaker: model.speaker)
+                    .presentationCompactAdaptation(.popover)
+            }
+        }
+    }
+}
+
+// MARK: - Settings
+
+/// Opens the Settings screen. Every one of Alex's apps has one; this app has a real setting in
+/// it (the voice), so the button ships rather than being Debug-only.
+private struct SettingsButton: View {
+    let model: CorpospeakModel
+    @State private var isShowingSettings = false
+
+    var body: some View {
+        Button {
+            isShowingSettings = true
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.55))
+                .frame(width: 30, height: 30)
+                .background(.white.opacity(0.05), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.07)))
+        }
+        .buttonStyle(.plain)
+        .help("Settings")
+        .accessibilityLabel("Settings")
+        .sheet(isPresented: $isShowingSettings) {
+            SettingsView(model: model)
         }
     }
 }
@@ -761,22 +808,56 @@ private struct VoiceHelp: View {
             Text("Voice")
                 .font(.headline)
 
+            VoiceHelpText(speaker: speaker)
+        }
+        .font(.callout)
+        .padding(18)
+        .frame(width: 340)
+    }
+}
+
+/// The same words on a phone, where a popover anchored to the top row has nowhere to open.
+/// Built like the Settings sheets: dark, titled, with one Done button.
+private struct VoiceHelpSheet: View {
+    let speaker: Speaker
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VoiceHelpText(speaker: speaker)
+                    .frame(maxWidth: 560, alignment: .leading)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Color.black.ignoresSafeArea())
+            .navigationTitle("Voice")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .presentationDetents([.medium, .large])
+    }
+}
+
+private struct VoiceHelpText: View {
+    let speaker: Speaker
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Corpospeak is at its best in your own voice. Create a Personal Voice in \(Platform.voiceSettingsPath) (ten phrases, about a minute) and allow Corpospeak to use it. It then speaks as you by default; the system voices are there as a fallback so the app works right away regardless.")
             Text(statusLine)
                 .foregroundStyle(.secondary)
             Text("Your voice leads the voice menu, with the system voices below it. Nothing you say leaves your \(Platform.device).")
                 .foregroundStyle(.secondary)
-
-            Divider()
-
-            Link(destination: URL(string: "https://www.youtube.com/shorts/JNRDj799VK4")!) {
-                Label("Got the job. No one asked what it was.", systemImage: "play.rectangle")
-            }
-            .foregroundStyle(.secondary)
         }
-        .font(.callout)
-        .padding(18)
-        .frame(width: 340)
     }
 
     private var statusLine: String {

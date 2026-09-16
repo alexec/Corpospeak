@@ -1,5 +1,33 @@
 import SwiftUI
 
+/// The words of the first run: what Corpospeak is, how you use it, and why this one.
+///
+/// Held apart from `FirstRun` so Settings' "How it works" row can show the same copy without
+/// the button that asks for the microphone. Re-reading what the app does must never open a
+/// system alert, so the button lives in `FirstRun` and nowhere else, and the copy lives here
+/// once rather than in two places that drift.
+struct FirstRunContent: View {
+    let compact: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: compact ? 14 : 18) {
+            Text("Corpospeak listens, and says it back the way a meeting would.")
+                .font(.system(size: compact ? 22 : 28, weight: .semibold, design: .serif))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Say something in plain English. It gets rewritten into the language of alignment, cadence and circling back, and read out loud.")
+                Text("It listens the whole time it's open, so there's no button to hold.")
+                Text("The rewriting and the voice both run on your \(Platform.device). Private and free forever.")
+            }
+            .font(.system(size: compact ? 15 : 16))
+            .foregroundStyle(.white.opacity(0.62))
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 /// What a new user sees instead of two system alerts.
 ///
 /// The microphone *is* Corpospeak, so this is primed on the first screen rather than at a
@@ -16,19 +44,7 @@ struct FirstRun: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 14 : 18) {
-            Text("Corpospeak listens, and says it back the way a meeting would.")
-                .font(.system(size: compact ? 22 : 28, weight: .semibold, design: .serif))
-                .foregroundStyle(.white)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Say something in plain English. It gets rewritten into the language of alignment, cadence and circling back, and read out loud.")
-                Text("It listens the whole time it's open, so there's no button to hold.")
-                Text("Nothing leaves your \(Platform.device). The rewriting and the voice both run here.")
-            }
-            .font(.system(size: compact ? 15 : 16))
-            .foregroundStyle(.white.opacity(0.62))
-            .fixedSize(horizontal: false, vertical: true)
+            FirstRunContent(compact: compact)
 
             Button(action: onContinue) {
                 Text("Start listening")
