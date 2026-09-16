@@ -129,7 +129,7 @@ private struct Acknowledgements: View {
                 // Monospaced because most of what follows is verbatim licence text, hard-wrapped
                 // by whoever wrote it; 11pt is what keeps those lines from wrapping twice on a
                 // phone. The prose above them is left unwrapped in the file so it reflows.
-                Text(notices)
+                Text(Self.notices)
                     .font(.system(size: 11, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: 560, alignment: .leading)
@@ -154,9 +154,13 @@ private struct Acknowledgements: View {
         #endif
     }
 
+    /// Read once for the life of the process, not once per `body`. Bundled text cannot change
+    /// while the app runs, and a computed property here would have gone back to disk for 16KB
+    /// on every view update — scrolling included.
+    ///
     /// If this ever reads the fallback, the file was dropped from the bundle — which is a
     /// licence problem, not a cosmetic one, so it says so rather than showing an empty page.
-    private var notices: String {
+    private static let notices: String = {
         guard let url = Bundle.main.url(forResource: "THIRD-PARTY-NOTICES", withExtension: "md"),
               let text = try? String(contentsOf: url, encoding: .utf8) else {
             return """
@@ -168,5 +172,5 @@ private struct Acknowledgements: View {
                 """
         }
         return text
-    }
+    }()
 }
