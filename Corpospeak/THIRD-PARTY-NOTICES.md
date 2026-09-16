@@ -58,14 +58,14 @@ Text normalisation, included in FluidAudio as a prebuilt xcframework (v0.3.0). I
 
 It includes:
 
-- **NVIDIA NeMo Text Processing** — https://github.com/NVIDIA/NeMo-text-processing — Apache License 2.0 — Copyright (c) NVIDIA CORPORATION & AFFILIATES.
-- **rustfst** — https://github.com/Garvys/rustfst — MIT or Apache-2.0 — Copyright (c) Alexandre Caulier and the rustfst contributors.
-- **flate2** — https://github.com/rust-lang/flate2-rs — MIT or Apache-2.0 — Copyright (c) Alex Crichton and the flate2 contributors.
+- **NVIDIA NeMo Text Processing**, Apache License 2.0. Copyright (c) NVIDIA CORPORATION & AFFILIATES. https://github.com/NVIDIA/NeMo-text-processing
+- **rustfst**, MIT or Apache-2.0. Copyright (c) Alexandre Caulier and the rustfst contributors. https://github.com/Garvys/rustfst
+- **flate2**, MIT or Apache-2.0. Copyright (c) Alex Crichton and the flate2 contributors. https://github.com/rust-lang/flate2-rs
 - Further Rust crates reached through those two (`nom`, `miniz_oxide`, `bitflags`, `anyhow` and others), each under MIT and/or Apache-2.0.
 
 ---
 
-# Appendix A — Apache License 2.0
+# Appendix A: Apache License 2.0
 
                                  Apache License
                            Version 2.0, January 2004
@@ -271,7 +271,7 @@ It includes:
 
 ---
 
-# Appendix B — MIT License
+# Appendix B: MIT License
 
 MIT License
 

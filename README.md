@@ -54,8 +54,8 @@ No network connections, no data collected, nothing retained. See
 
 The code is MIT — see [LICENSE](LICENSE).
 
-The app also ships open-source work by other people — Kokoro's weights, and the
-FluidAudio library that runs them, along with what FluidAudio itself carries.
+The app also ships open-source work by other people: Kokoro's weights, the
+FluidAudio library that runs them, and what FluidAudio itself carries.
 Their licences are reproduced in
 [Corpospeak/THIRD-PARTY-NOTICES.md](Corpospeak/THIRD-PARTY-NOTICES.md), which is
 bundled into the app and shown under Settings → Acknowledgements. It lives inside

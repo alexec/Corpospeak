@@ -107,6 +107,12 @@
 
 ## Minor review findings
 
+- [ ] README-emdash · 2026-09-15 · `README.md:20,36,55,69` · four em dashes in the README's
+  prose, which the house voice bans anywhere a reader can see one. Pre-existing and in Alex's
+  own words, so logged rather than restyled: rewriting someone's approved prose while passing
+  through is how a diff stops being reviewable. Each is a one-character fix to a colon, a
+  comma or a full stop. Found by `critic-scan.sh`, which also caught two of my own in the
+  third-party notices; those are fixed, because that file is shown inside the app.
 - [x] ASR-metadata · 2026-09-10 · App Store Connect → App Information · subtitle read
   "Say it. Hear it in CorpSpeak", spelling the app the old way. Now "Say it. Hear it in
   Corpospeak" (29 of 30 characters). Goes out with the next version.
